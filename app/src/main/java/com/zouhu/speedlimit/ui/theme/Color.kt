@@ -1,0 +1,66 @@
+package com.zouhu.speedlimit.ui.theme
+
+import androidx.compose.ui.graphics.Color
+
+data class SlmColors(
+    val bg: Color,
+    val surface: Color,
+    val surface2: Color,
+    val surface3: Color,
+    val gaugeTrack: Color,
+    val text: Color,
+    val muted: Color,
+    val dim: Color,
+    val mint: Color,
+    val amber: Color,
+    val red: Color,
+    val sign: Color,
+    val blue: Color,
+    val green: Color,
+    val mapBg: Color,
+    val mapRoad: Color,
+    val mapRoad2: Color,
+    val mapPark: Color,
+)
+
+val DarkSlmColors = SlmColors(
+    bg = Color(0xFF000000),
+    surface = Color(0xFF1C1C1E),
+    surface2 = Color(0xFF2C2C2E),
+    surface3 = Color(0xFF3A3A3C),
+    gaugeTrack = Color(0xFF1F1F21),
+    text = Color(0xFFFFFFFF),
+    muted = Color(0xFF98989D),
+    dim = Color(0xFF636366),
+    mint = Color(0xFF0A84FF),
+    amber = Color(0xFFFF9F0A),
+    red = Color(0xFFFF453A),
+    sign = Color(0xFFFF3B30),
+    blue = Color(0xFF64D2FF),
+    green = Color(0xFF30D158),
+    mapBg = Color(0xFF0A0A0C),
+    mapRoad = Color(0xFF2C2C2E),
+    mapRoad2 = Color(0xFF232325),
+    mapPark = Color(0xFF1C2A1E),
+)
+
+val LightSlmColors = SlmColors(
+    bg = Color(0xFFF2F2F7),
+    surface = Color(0xFFFFFFFF),
+    surface2 = Color(0xFFF2F2F7),
+    surface3 = Color(0xFFE5E5EA),
+    gaugeTrack = Color(0xFFD1D1D8),
+    text = Color(0xFF000000),
+    muted = Color(0xFF6E6E73),
+    dim = Color(0xFFAEAEB2),
+    mint = Color(0xFF007AFF),
+    amber = Color(0xFFFF9500),
+    red = Color(0xFFFF3B30),
+    sign = Color(0xFFFF3B30),
+    blue = Color(0xFF32ADE6),
+    green = Color(0xFF34C759),
+    mapBg = Color(0xFFE8E8ED),
+    mapRoad = Color(0xFFC7C7CC),
+    mapRoad2 = Color(0xFFD8D8DC),
+    mapPark = Color(0xFFDCE8DC),
+)

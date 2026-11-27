@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 深色系统：与主界面 Color.kt 的 DarkSlmColors 一致 -->
+    <color name="ic_launcher_bg">#000000</color>
+    <color name="ic_launcher_fg">#0A84FF</color>
+</resources>

@@ -1,0 +1,20 @@
+# Copy this file to local.properties and fill in your own keys.
+# NEVER commit local.properties or paste real keys into GitHub issues/PRs.
+#
+# Android app AK: Baidu map/navi/search. Bind it to package name
+# com.zouhu.speedlimit and the SHA-1 of your signing certificate in the
+# Baidu console.
+baidu.map.ak=
+
+# Server AK: Horizon WebSocket + HTTP cruise + lamp traffic-light APIs.
+# Horizon and lamp are advanced services and must be enabled by a Baidu
+# ticket/entitlement; a normal map AK cannot substitute for this one.
+horizon.ak=
+
+# Optional server SK. Current Baidu endpoints authenticate with AK only; keep
+# this only if you have a future signed-request flow. The Settings page stores
+# an encrypted local override.
+horizon.sk=
+
+# Xiaomi MiMo TTS key. Leave empty to disable navigation speech.
+mimo.api.key=
