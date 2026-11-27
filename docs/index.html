@@ -1,0 +1,1637 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#f2f2f7">
+<title>Velora</title>
+<style>
+  :root{
+    /* ── Velora 浅色体系：所有色相都来自这块屏幕本身 ── */
+    --bg:#f2f2f7;            /* 屏幕底 */
+    --page:#eef0f4;          /* 页面底（冷中性） */
+    --surface:#ffffff;       /* 胶囊 / 卡片 */
+    --surface2:#f2f2f7;
+    --surface3:#e5e5ea;
+    --ink:#101216;           /* 主文字（暖黑） */
+    --muted:#6e6e73;
+    --dim:#aeaeb2;
+    --line:rgba(16,18,22,.09);
+    --line2:rgba(16,18,22,.16);
+    --track:#d1d1d8;         /* 仪表轨道 */
+    --blue:#007aff;          /* 主导：定位 / 路线 / 正常仪表 */
+    --blue-deep:#0060df;
+    --cyan:#32ade6;          /* 仪表渐变副色 / 信息 */
+    --red:#ff3b30;           /* 限速牌 / 超速 / 红灯 */
+    --amber:#ff9500;         /* 黄灯 / 警示 */
+    --green:#34c759;         /* 绿灯 / 通行 / 在线 */
+    --blue-soft:rgba(0,122,255,.10);
+    --red-soft:rgba(255,59,48,.16);
+    --green-soft:rgba(52,199,89,.12);
+    --ease:cubic-bezier(.22,1,.36,1);   /* SlmEase，与 Compose 一致 */
+    --sans:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    --mono:"SF Mono",ui-monospace,"Cascadia Code","JetBrains Mono",Consolas,monospace;
+  }
+  *{box-sizing:border-box;}
+  html{min-width:320px;background:var(--page);scrollbar-width:thin;scrollbar-color:#c2c8d2 transparent;}
+  body{
+    margin:0;min-height:100vh;color:var(--ink);font-family:var(--sans);
+    background:
+      radial-gradient(1100px 620px at 82% -14%,rgba(0,122,255,.075),transparent 56%),
+      radial-gradient(900px 640px at -8% 108%,rgba(50,173,230,.07),transparent 52%),
+      radial-gradient(700px 500px at 50% 50%,rgba(255,255,255,.5),transparent 70%),
+      var(--page);
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  }
+  /* 页面环境光：极克制的漂移光晕 */
+  body::before{content:"";position:fixed;inset:-20% -10% auto -10%;height:70vh;z-index:0;pointer-events:none;
+    background:radial-gradient(560px 380px at 28% 22%,rgba(0,122,255,.06),transparent 70%);
+    filter:blur(10px);animation:drift 26s ease-in-out infinite alternate;}
+  @keyframes drift{from{transform:translate3d(-3%,-2%,0) scale(1);}to{transform:translate3d(5%,3%,0) scale(1.1);}}
+  ::-webkit-scrollbar{width:9px;height:9px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:#c2c8d2;border-radius:99px;border:2px solid var(--page);}
+  ::-webkit-scrollbar-thumb:hover{background:var(--blue);}
+  button{font:inherit;color:inherit;-webkit-tap-highlight-color:transparent;cursor:pointer;}
+  button:focus-visible{outline:3px solid rgba(0,122,255,.28);outline-offset:3px;}
+  svg{display:block;}
+  .tabular{font-variant-numeric:tabular-nums lining-nums;}
+
+  .page{position:relative;z-index:1;width:min(100%,1560px);height:100svh;min-height:680px;margin:0 auto;
+    padding:18px 24px;display:flex;flex-direction:column;overflow:hidden;}
+
+  /* ── 顶部：品牌 / 4 段剧本 / 播放控制 ── */
+  .topbar{flex:0 0 auto;display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"brand steps ctl";
+    align-items:center;gap:28px;margin-bottom:20px;animation:rise .7s var(--ease) both;}
+  .brand{grid-area:brand;display:flex;align-items:center;gap:12px;flex:0 0 auto;}
+  .brand-mark{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;color:#fff;
+    background:linear-gradient(145deg,#2b9bff,#0060df);
+    box-shadow:0 9px 24px rgba(0,122,255,.24),inset 0 1px 0 rgba(255,255,255,.32);}
+  .brand-mark svg{width:24px;height:24px;}
+  .brand-name{font-size:20px;font-weight:700;letter-spacing:-.02em;line-height:1;}
+  .ctl-cluster{grid-area:ctl;display:flex;align-items:center;gap:10px;flex:0 0 auto;}
+  .ctl-btn{height:42px;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.72);
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 18px;
+    font-size:14px;font-weight:620;white-space:nowrap;
+    transition:background .2s,border-color .2s,transform .2s var(--ease),box-shadow .2s;}
+  .ctl-btn:hover{background:#fff;border-color:var(--line2);transform:translateY(-1px);}
+  .ctl-btn:active{transform:translateY(0) scale(.98);}
+  .ctl-btn svg{width:15px;height:15px;}
+  .play-btn{min-width:104px;color:#fff;background:var(--ink);border-color:var(--ink);box-shadow:0 6px 18px rgba(16,18,22,.14);}
+  .play-btn:hover{background:#2a2e34;border-color:#2a2e34;}
+  .play-btn.paused{background:linear-gradient(145deg,#2b9bff,#0060df);border-color:transparent;box-shadow:0 7px 18px rgba(0,122,255,.24);}
+  .play-btn.paused:hover{background:linear-gradient(145deg,#3aa4ff,#0a6ae8);}
+  #replayBtn svg{transition:transform .5s var(--ease);}
+  #replayBtn:hover svg{transform:rotate(-150deg);}
+  #replayBtn.spin svg{transform:rotate(-360deg);}
+
+  /* 4 段剧本切换胶囊：当前段蓝，已完成段轻绿，可点击跳转 */
+  .steps{grid-area:steps;min-width:0;width:100%;max-width:760px;justify-self:center;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;}
+  .step{appearance:none;min-width:0;height:44px;border:1px solid var(--line);border-radius:999px;
+    background:rgba(255,255,255,.62);color:#5f666e;padding:0 14px;
+    font-size:14px;font-weight:620;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    transition:color .25s var(--ease),background .25s var(--ease),border-color .25s var(--ease),box-shadow .25s var(--ease),transform .25s var(--ease);}
+  .step:hover{background:#fff;border-color:var(--line2);color:#282e34;transform:translateY(-1px);}
+  .step.active{color:var(--blue-deep);border-color:rgba(0,122,255,.32);background:linear-gradient(145deg,rgba(0,122,255,.13),rgba(50,173,230,.055));
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 6px 18px rgba(0,122,255,.09);}
+  .step.done{color:#3e6d4b;border-color:rgba(52,199,89,.18);background:rgba(52,199,89,.055);}
+
+  .workspace{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:minmax(0,1.32fr) minmax(340px,.68fr);gap:20px;}
+  .sim-panel,.device-panel{min-width:0;min-height:0;border:1px solid var(--line);border-radius:24px;
+    background:rgba(255,255,255,.8);box-shadow:0 15px 50px rgba(32,39,46,.06),inset 0 1px 0 rgba(255,255,255,.85);
+    backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);}
+  .sim-panel{padding:0;display:flex;flex-direction:column;border:0;background:transparent;box-shadow:none;
+    backdrop-filter:none;-webkit-backdrop-filter:none;animation:rise .8s var(--ease) .1s both;}
+
+  /* ── 左侧：2.5D 智驾透视路面 ── */
+  .road-stage{position:relative;flex:1 1 auto;min-height:320px;overflow:hidden;isolation:isolate;
+    border:1px solid rgba(255,255,255,.55);border-radius:28px;background:#e6ecf2;
+    box-shadow:0 24px 70px rgba(31,42,52,.11),0 2px 8px rgba(31,42,52,.04),inset 0 0 0 1px rgba(255,255,255,.35);}
+  .road-stage::after{content:"";position:absolute;inset:0;z-index:1;border-radius:inherit;pointer-events:none;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.65),inset 0 -120px 160px -90px rgba(35,46,57,.16);}
+  #roadCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;}
+  .stage-hud{position:absolute;left:32px;right:32px;display:flex;align-items:flex-start;justify-content:space-between;gap:20px;
+    pointer-events:none;z-index:2;}
+  .stage-hud.top{top:28px;}
+  .stage-title{margin:0;color:#12171d;font-size:30px;line-height:1.06;font-weight:650;letter-spacing:-.045em;
+    text-shadow:0 1px 0 rgba(255,255,255,.55);}
+  .stage-title.flip{animation:flip .5s var(--ease);}
+  @keyframes flip{from{opacity:0;transform:translateY(7px);}to{opacity:1;transform:none;}}
+  .stage-sub{margin:10px 0 0;color:rgba(20,29,37,.68);font-size:16px;line-height:1.35;font-weight:520;letter-spacing:-.012em;}
+  .hud-chip{display:inline-flex;align-items:center;justify-content:center;height:40px;min-width:92px;padding:0 18px;
+    border:1px solid rgba(255,255,255,.92);border-radius:999px;color:#141a20;background:rgba(255,255,255,.82);
+    box-shadow:0 10px 28px rgba(35,46,57,.12),inset 0 1px 0 rgba(255,255,255,.95);
+    backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+    font-size:16px;font-weight:700;font-variant-numeric:tabular-nums lining-nums;letter-spacing:.005em;white-space:nowrap;
+    transition:opacity .38s var(--ease),transform .38s var(--ease);}
+  .hud-chip.hide{opacity:0;transform:translateY(-8px) scale(.96);}
+
+  /* ── 右侧：真机 ── */
+  .device-panel{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:14px;overflow:hidden;
+    background:radial-gradient(ellipse at 50% 40%,rgba(255,255,255,.98),rgba(248,249,251,.78) 58%,rgba(238,240,244,.72)),rgba(255,255,255,.6);
+    animation:rise .8s var(--ease) .16s both;}
+  .device-panel::before{content:"";position:absolute;width:74%;aspect-ratio:1;left:13%;top:12%;border:1px solid rgba(33,42,49,.04);
+    border-radius:50%;box-shadow:0 0 0 42px rgba(255,255,255,.12),0 0 0 84px rgba(255,255,255,.08);pointer-events:none;}
+  .phone-shell{position:relative;z-index:1;width:min(352px,calc((100svh - 150px)*.4613 + 18px));max-width:100%;padding:9px;
+    border:1px solid rgba(255,255,255,.6);border-radius:45px;flex:0 0 auto;
+    background:linear-gradient(135deg,#9aa0a6 0%,#3a3f44 8%,#14171a 30%,#0a0c0e 68%,#43484d 92%,#82888e 100%);
+    box-shadow:0 26px 58px rgba(29,36,42,.24),0 7px 16px rgba(29,36,42,.15),inset 0 0 0 1px rgba(0,0,0,.7),inset 0 0 0 2px rgba(255,255,255,.1);}
+  .phone-shell::after{content:"";position:absolute;inset:3px;border:1px solid rgba(255,255,255,.08);border-radius:41px;pointer-events:none;}
+  .side-key{position:absolute;width:3px;border-radius:3px;background:linear-gradient(90deg,#24292d,#747a7f);box-shadow:inset 0 1px 1px rgba(255,255,255,.22);}
+  .side-key.power{right:-4px;top:24%;height:12%;}
+  .side-key.vol1{left:-4px;top:19%;height:8%;}
+  .side-key.vol2{left:-4px;top:29%;height:8%;}
+  .phone-screen{position:relative;width:100%;aspect-ratio:393/852;overflow:hidden;isolation:isolate;container-type:inline-size;
+    border-radius:36px;background:var(--bg);box-shadow:inset 0 0 0 1px rgba(0,0,0,.12);}
+  .phone-screen::after{content:"";position:absolute;inset:0;z-index:30;border-radius:inherit;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);pointer-events:none;}
+
+  /* 迷你地图：背景装饰层（羽化遮罩），不参与内容流 */
+  .mini-map{position:absolute;z-index:0;top:0;right:0;width:44%;height:38%;overflow:hidden;background:#e8e8ed;pointer-events:none;
+    -webkit-mask-image:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.5) 13%,#000 42%),linear-gradient(180deg,#000 0% 78%,rgba(0,0,0,.5) 90%,transparent 100%);
+    mask-image:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.5) 13%,#000 42%),linear-gradient(180deg,#000 0% 78%,rgba(0,0,0,.5) 90%,transparent 100%);
+    -webkit-mask-composite:source-in;mask-composite:intersect;}
+  .mini-map svg{width:100%;height:100%;}
+  .m-bg{fill:#e8e8ed;}.m-park{stroke:#dce8dc;}.m-road{stroke:#c7c7cc;}.m-road2{stroke:#d8d8dc;}
+  .m-route{stroke:#007aff;}.m-route-glow{stroke:rgba(0,122,255,.14);}
+  .m-sign{fill:#fff;stroke:#ff3b30;}.m-sign-num{fill:#1a1c20;font-weight:700;}
+  .m-cam{fill:#fff;stroke:#ff3b30;}.m-cam-dot{fill:#ff3b30;}
+  .m-pos{fill:#007aff;stroke:#e8e8ed;}.m-pos-glow{fill:#007aff;opacity:.18;transform-box:fill-box;transform-origin:center;animation:posPulse 2.6s ease-in-out infinite;}
+  @keyframes posPulse{0%,100%{transform:scale(1);opacity:.18;}50%{transform:scale(1.5);opacity:.07;}}
+
+  .system-status{position:absolute;z-index:6;top:0;left:0;right:0;height:11.2cqw;padding:2.6cqw 6.1cqw 0;display:flex;align-items:center;
+    color:#111;font-size:3.3cqw;font-weight:650;pointer-events:none;}
+  .system-status .right{margin-left:auto;display:flex;align-items:center;gap:1.5cqw;}
+  .system-status svg{width:4.2cqw;height:3.2cqw;}
+  .system-status .bat{width:5.4cqw;height:2.7cqw;}
+  .system-status .net{font-size:2.5cqw;font-weight:650;letter-spacing:-.02em;}
+  .punch-hole{position:absolute;z-index:8;top:2.4cqw;left:50%;width:2.9cqw;height:2.9cqw;border-radius:50%;background:#08090a;
+    transform:translateX(-50%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.05);}
+
+  /* ── 内容：垂直流式排版（flex column），绝不绝对定位压盖 ── */
+  .app-flow{position:absolute;z-index:2;inset:0;display:flex;flex-direction:column;
+    padding:13.74cqw 0 7.63cqw;}   /* topPad 54dp · bottomPad 30dp */
+  .gauge-zone{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+  .gauge-wrap{position:relative;width:75.318cqw;height:75.318cqw;flex:0 0 auto;}   /* 296dp */
+  .gauge-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;}
+  .gauge-track{fill:none;stroke:var(--track);stroke-width:12;stroke-linecap:round;}
+  .gauge-fill{fill:none;stroke:url(#phoneGrad);stroke-width:12;stroke-linecap:round;transition:stroke .25s ease;}
+  .gauge-wrap.over .gauge-fill{stroke:var(--red);}
+  .gauge-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+  .speed-number{color:#000;font-size:27.48cqw;font-weight:300;line-height:1;letter-spacing:-.02em;
+    font-variant-numeric:tabular-nums lining-nums;transition:color .25s ease;}
+  .gauge-wrap.over .speed-number{color:var(--red);}
+  .speed-unit{margin-top:3.05cqw;color:var(--dim);font-size:3.05cqw;line-height:1.2;font-weight:400;letter-spacing:.763cqw;text-indent:.763cqw;}
+  .status-slot{height:6.87cqw;margin-top:4.58cqw;display:grid;place-items:center;}
+  .status-badge{padding:1.527cqw 3.817cqw;border-radius:999px;color:var(--red);background:var(--red-soft);
+    font-size:2.926cqw;line-height:1.25;font-weight:600;white-space:nowrap;opacity:0;transform:scale(.88);
+    transition:opacity .3s ease,transform .3s var(--ease),background .25s,color .25s;}
+  .status-badge.show{opacity:1;transform:scale(1);}
+  .status-badge.severe{color:#fff;background:var(--red);}
+  .gauge-wrap.severe .speed-number,.gauge-wrap.severe .gauge-fill,.status-badge.severe{animation:blink 1.6s linear infinite;}
+  @keyframes blink{0%,100%{opacity:1;}50%{opacity:.4;}}
+  .limit-sign{position:absolute;z-index:4;left:-1.527cqw;top:50%;width:18.321cqw;height:18.321cqw;display:grid;place-items:center;
+    border:2.036cqw solid var(--red);border-radius:50%;color:#1a1c20;background:#fff;font-size:7.888cqw;line-height:1;font-weight:700;
+    font-variant-numeric:tabular-nums;transform:translateY(-50%);transition:opacity .45s ease,transform .5s var(--ease);}
+  .limit-sign.hide{opacity:0;transform:translateY(-50%) scale(.5);}
+
+  /* 区间平均圆盘：独立流式插槽，展开时占据真实高度，与上下留足间距 */
+  .avg-slot{display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows .5s var(--ease),opacity .3s ease;}
+  .avg-slot.show{grid-template-rows:1fr;opacity:1;}
+  .avg-clip{min-height:0;overflow:hidden;display:flex;justify-content:center;}
+  .avg-motion{padding-top:6.616cqw;}   /* avgGap 26dp */
+  .avg-dial{position:relative;width:32.57cqw;height:32.57cqw;transform:scale(.85);transition:transform .5s var(--ease);}
+  .avg-slot.show .avg-dial{transform:scale(1);}
+  .avg-dial svg{width:100%;height:100%;overflow:visible;}
+  .avg-track{fill:none;stroke:rgba(0,0,0,.08);stroke-width:8.54;}
+  .avg-fill{fill:none;stroke:var(--blue);stroke-width:8.54;stroke-linecap:round;transition:stroke .25s ease;}
+  .avg-dial.over .avg-fill{stroke:var(--red);}
+  .avg-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+  .avg-number{color:#000;font-size:9.77cqw;line-height:1;font-weight:300;font-variant-numeric:tabular-nums;transition:color .25s;}
+  .avg-dial.over .avg-number{color:var(--red);}
+  .avg-label{margin-top:1.02cqw;color:var(--dim);font-size:2.54cqw;line-height:1.2;}
+  .avg-dial.severe .avg-number,.avg-dial.severe .avg-fill{animation:blink 1.6s linear infinite;}
+
+  /* 底部胶囊堆栈：两个互斥的独立插槽，依次流式排布 */
+  .bottom-stack{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;padding:0 4.58cqw;}
+  .flow-slot{width:100%;display:grid;grid-template-rows:0fr;opacity:0;transform:translateY(3.3cqw);
+    transition:grid-template-rows .45s var(--ease),opacity .3s ease,transform .55s var(--ease);}
+  .flow-slot.show{grid-template-rows:1fr;opacity:1;transform:translateY(0);}
+  .flow-clip{min-height:0;overflow:hidden;display:flex;justify-content:center;}
+  .cam-motion{padding-top:3.562cqw;}     /* 14dp */
+  .light-motion{padding-top:3.053cqw;}   /* 12dp */
+  .camera-capsule{display:inline-flex;align-items:center;gap:3.053cqw;padding:2.29cqw 5.089cqw 2.29cqw 2.545cqw;
+    border:.255cqw solid rgba(0,0,0,.16);background:var(--surface);border-radius:999px;white-space:nowrap;}
+  .mini-sign{width:10.178cqw;height:10.178cqw;display:grid;place-items:center;flex:0 0 auto;border:1.303cqw solid var(--red);
+    border-radius:50%;color:#1a1c20;background:#fff;font-size:4.377cqw;line-height:1;font-weight:700;font-variant-numeric:tabular-nums;}
+  .camera-icon{width:5.598cqw;height:5.598cqw;flex:0 0 auto;color:var(--red);}
+  .camera-copy{color:var(--muted);font-size:3.435cqw;line-height:1.25;font-variant-numeric:tabular-nums;}
+  .camera-copy strong{color:#000;font-weight:700;}
+  /* 单行直行绿灯胶囊：↑ + 3 灯珠 + 读秒（13dp 灯珠 / 18sp 读秒 / 6dp 间距） */
+  .light-capsule{display:inline-flex;align-items:center;gap:1.527cqw;padding:2.545cqw 4.071cqw;
+    border:.255cqw solid rgba(0,0,0,.16);background:var(--surface);border-radius:999px;white-space:nowrap;}
+  .flow-glyph{width:3.562cqw;height:3.562cqw;margin-right:.51cqw;color:rgba(0,0,0,.66);flex:0 0 auto;}
+  .light-dot{width:3.308cqw;height:3.308cqw;flex:0 0 auto;border-radius:50%;background:rgba(0,0,0,.12);transition:background .18s,opacity .18s;}
+  .light-dot.red.on{background:var(--red);}
+  .light-dot.yellow.on{background:var(--amber);}
+  .light-dot.green.on{background:var(--green);}
+  .light-dot.flash{animation:blink .96s linear infinite;}
+  .light-count{min-width:4.6cqw;margin-left:1.018cqw;color:#000;font-size:4.58cqw;line-height:1;font-weight:600;text-align:right;font-variant-numeric:tabular-nums;}
+  .light-count.empty{min-width:0;margin:0;}
+  .home-indicator{position:absolute;z-index:12;left:50%;bottom:2.03cqw;width:34cqw;height:1.27cqw;border-radius:999px;background:rgba(0,0,0,.78);transform:translateX(-50%);}
+
+  @keyframes rise{from{opacity:0;transform:translateY(18px);}to{opacity:1;transform:none;}}
+
+  @media (max-width:1240px){
+    .topbar{gap:20px;}
+    .steps{max-width:700px;}
+  }
+  @media (max-width:1120px){
+    .page{padding-inline:18px;}
+    .workspace{grid-template-columns:minmax(0,1.12fr) minmax(330px,.88fr);gap:15px;}
+    .topbar{gap:16px;}
+    .steps{max-width:620px;gap:7px;}
+    .step{padding:0 10px;}
+  }
+  @media (max-width:900px){
+    .page{height:auto;min-height:100svh;overflow:visible;padding:18px 16px 28px;}
+    .topbar{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"brand ctl" "steps steps";gap:14px 12px;}
+    .steps{max-width:none;}
+    .workspace{grid-template-columns:1fr;gap:18px;}
+    .sim-panel{min-height:560px;}
+    .device-panel{padding:26px 18px;}
+    .phone-shell{width:min(352px,calc(100vw - 72px));}
+  }
+  @media (max-width:620px){
+    .page{padding:14px 11px 22px;}
+    .brand{gap:10px;}
+    .brand-name{font-size:18px;}
+    .brand-mark{width:38px;height:38px;border-radius:12px;}
+    .brand-mark svg{width:22px;height:22px;}
+    .ctl-cluster{gap:8px;}
+    .ctl-btn{height:40px;padding:0 14px;font-size:13px;}
+    .play-btn{min-width:88px;}
+    .steps{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+    .step{height:42px;font-size:14px;}
+    .sim-panel{min-height:470px;}
+    .road-stage{border-radius:24px;}
+    .stage-hud{left:20px;right:20px;top:20px;}
+    .stage-title{font-size:26px;}
+    .stage-sub{font-size:15px;margin-top:8px;}
+    .hud-chip{height:36px;min-width:80px;padding:0 14px;font-size:16px;}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important;}
+    body::before{animation:none;}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- 顶部：品牌 / 4 段剧本 / 播放控制 -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 3a9 9 0 1 0 9 9" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/><path d="M12 12l5.5-5.5" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="12" r="1.9" fill="#fff"/></svg>
+      </div>
+      <div class="brand-name">Velora</div>
+    </div>
+
+    <nav class="steps" id="steps" aria-label="演示阶段">
+      <button class="step active" type="button" data-stage="0" aria-current="step">正常巡航</button>
+      <button class="step" type="button" data-stage="1">路口绿灯</button>
+      <button class="step" type="button" data-stage="2">电子眼超速</button>
+      <button class="step" type="button" data-stage="3">区间测速</button>
+    </nav>
+
+    <div class="ctl-cluster">
+      <button class="ctl-btn play-btn" id="playBtn" type="button" aria-pressed="true">
+        <svg id="playIcon" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1.2"/><rect x="14" y="5" width="4" height="14" rx="1.2"/></svg>
+        <span id="playLabel">暂停</span>
+      </button>
+      <button class="ctl-btn" id="replayBtn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 3.6V8h-4.4"/></svg>
+        <span>重播</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="workspace">
+    <!-- 左：2.5D 智驾透视路面 -->
+    <section class="sim-panel" aria-label="路况模拟">
+      <div class="road-stage" id="roadStage">
+        <canvas id="roadCanvas" aria-hidden="true"></canvas>
+        <div class="stage-hud top">
+          <div>
+            <h1 class="stage-title" id="stageTitle">正常巡航</h1>
+            <p class="stage-sub" id="stageSub">限速 60 · 正常通过</p>
+          </div>
+          <div class="hud-chip hide" id="nextChip" aria-hidden="true"><span id="nextDist">0 m</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 右：真机 Velora 首页 -->
+    <section class="device-panel" aria-label="真机界面">
+      <div class="phone-shell">
+        <span class="side-key power" aria-hidden="true"></span>
+        <span class="side-key vol1" aria-hidden="true"></span>
+        <span class="side-key vol2" aria-hidden="true"></span>
+        <div class="phone-screen" id="screen">
+
+          <!-- 迷你地图（羽化遮罩 + 定位蓝点） -->
+          <div class="mini-map" aria-hidden="true">
+            <svg viewBox="0 0 400 800" preserveAspectRatio="xMidYMid slice">
+              <rect class="m-bg" x="0" y="0" width="400" height="800"/>
+              <path class="m-park" d="M-20 120 Q140 80 240 150 Q340 220 420 120" fill="none" stroke-width="54" stroke-linecap="round" opacity=".65"/>
+              <path class="m-road" d="M300 -20 L285 200 L330 420 L300 820" fill="none" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+              <path class="m-road" d="M-20 300 L180 320 L320 280 L420 320" fill="none" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+              <path class="m-road2" d="M80 -20 L120 260 L90 500 L160 820" fill="none" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+              <path class="m-road2" d="M-20 580 L160 560 L300 600 L420 560" fill="none" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+              <path class="m-route-glow" d="M305 820 L305 440 L290 280 L285 200 L300 60" fill="none" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+              <path class="m-route" d="M305 820 L305 440 L290 280 L285 200 L300 60" fill="none" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+              <g><circle class="m-sign" cx="305" cy="500" r="17" stroke-width="5"/><text class="m-sign-num" x="305" y="505" text-anchor="middle" font-size="14">60</text></g>
+              <g><circle class="m-sign" cx="290" cy="280" r="17" stroke-width="5"/><text class="m-sign-num" x="290" y="285" text-anchor="middle" font-size="14">60</text></g>
+              <rect class="m-cam" x="291" y="360" width="26" height="20" rx="4" stroke-width="1.5"/><circle class="m-cam-dot" cx="304" cy="370" r="4"/>
+              <circle class="m-pos-glow" cx="305" cy="620" r="26"/>
+              <circle class="m-pos" cx="305" cy="620" r="11" stroke-width="3"/>
+            </svg>
+          </div>
+
+          <!-- 系统状态栏 -->
+          <div class="system-status" aria-hidden="true">
+            <span class="tabular">9:41</span>
+            <span class="right">
+              <svg viewBox="0 0 18 12" fill="#111"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="2" width="3" height="10" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1" opacity=".35"/></svg>
+              <span class="net">5G</span>
+              <svg class="bat" viewBox="0 0 26 13" fill="none"><rect x="1" y="1" width="21" height="11" rx="3" stroke="#111" stroke-width="1.4" opacity=".5"/><rect x="3" y="3" width="15" height="7" rx="1.6" fill="#111"/><rect x="23.5" y="4" width="2" height="5" rx="1" fill="#111" opacity=".5"/></svg>
+            </span>
+          </div>
+          <div class="punch-hole" aria-hidden="true"></div>
+
+          <!-- 内容流 -->
+          <div class="app-flow">
+            <div class="gauge-zone">
+              <div class="gauge-wrap" id="gaugeWrap">
+                <svg class="gauge-svg" viewBox="0 0 296 296" aria-hidden="true">
+                  <defs>
+                    <linearGradient id="phoneGrad" x1="0" y1="1" x2="1" y2="0">
+                      <stop offset="0" stop-color="#007aff"/><stop offset="1" stop-color="#32ade6"/>
+                    </linearGradient>
+                  </defs>
+                  <circle class="gauge-track" cx="148" cy="148" r="142" stroke-dasharray="669.16 892.21" transform="rotate(45 148 148)"/>
+                  <circle class="gauge-fill" id="gaugeFill" cx="148" cy="148" r="142" stroke-dasharray="0 892.21" transform="rotate(45 148 148)"/>
+                </svg>
+                <div class="gauge-center">
+                  <div class="speed-number tabular" id="speedNum">52</div>
+                  <div class="speed-unit">KM/H</div>
+                  <div class="status-slot"><div class="status-badge" id="statusBadge">超速</div></div>
+                </div>
+                <div class="limit-sign" id="limitSign"><span class="tabular" id="limitNum">60</span></div>
+              </div>
+
+              <div class="avg-slot" id="avgSlot">
+                <div class="avg-clip"><div class="avg-motion">
+                  <div class="avg-dial" id="avgDial">
+                    <svg viewBox="0 0 128 128" aria-hidden="true">
+                      <circle class="avg-track" cx="64" cy="64" r="59.73"/>
+                      <circle class="avg-fill" id="avgFill" cx="64" cy="64" r="59.73" stroke-dasharray="0 375.3" transform="rotate(-90 64 64)"/>
+                    </svg>
+                    <div class="avg-center">
+                      <div class="avg-number tabular" id="avgNum">0</div>
+                      <div class="avg-label">区间平均</div>
+                    </div>
+                  </div>
+                </div></div>
+              </div>
+            </div>
+
+            <div class="bottom-stack">
+              <div class="flow-slot" id="camSlot"><div class="flow-clip"><div class="cam-motion">
+                <div class="camera-capsule" id="camCapsule">
+                  <div class="mini-sign tabular" id="camSign">60</div>
+                  <svg class="camera-icon" id="camIconSpeed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="13" height="10" rx="2"/><path d="M16 10l5-2v8l-5-2z"/><circle cx="9.5" cy="12" r="2.4"/></svg>
+                  <svg class="camera-icon" id="camIconInterval" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:none"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.6 1.6M9.5 3h5M12 3v2.5"/></svg>
+                  <div class="camera-copy"><strong class="tabular" id="camDist">340m</strong><span id="camLabel"> 后 · 测速拍照</span></div>
+                </div>
+              </div></div></div>
+
+              <div class="flow-slot" id="lightSlot"><div class="flow-clip"><div class="light-motion">
+                <div class="light-capsule" id="lightCapsule">
+                  <svg class="flow-glyph" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 12V2.5M7 2.5L4.2 5.6M7 2.5l2.8 3.1"/></svg>
+                  <span class="light-dot red" id="dotRed"></span>
+                  <span class="light-dot yellow" id="dotYellow"></span>
+                  <span class="light-dot green on" id="dotGreen"></span>
+                  <span class="light-count tabular" id="lightCount">16</span>
+                </div>
+              </div></div></div>
+            </div>
+          </div>
+
+          <div class="home-indicator" aria-hidden="true"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+
+  /* ════════════════════════════════════════════════════════════
+     业务规则：逐行复刻现网 Compose 引擎
+     ════════════════════════════════════════════════════════════ */
+  var THRESHOLD_PCT = 10;
+  var CAMERA_ALERT_RANGE_M = 800;
+  var LIGHT_ALERT_RANGE_M = 300;
+
+  // OverspeedDetector.classify
+  function classify(speed, limit, cameraAhead, phase){
+    if(limit == null) return "UNKNOWN";
+    if(!cameraAhead) return "NORMAL";
+    if(phase === "INSIDE") return speed > limit ? "OVER" : "NORMAL";   // 区间内瞬时只 OVER 不 SEVERE
+    if(speed > limit * (1 + THRESHOLD_PCT / 100)) return "SEVERE";
+    if(speed > limit) return "OVER";
+    return "NORMAL";
+  }
+  // IntervalEngine.averageState
+  function averageState(avg, limit){
+    if(limit == null) return "NORMAL";
+    if(avg > limit * (1 + THRESHOLD_PCT / 100)) return "SEVERE";
+    if(avg > limit) return "OVER";
+    return "NORMAL";
+  }
+  // DistanceFormat.format
+  function fmtDist(m){
+    m = Math.max(0, m);
+    return m >= 1000 ? (m / 1000).toFixed(1) + "km" : Math.round(m) + "m";
+  }
+  // TrafficLightResolver.resolve（按周期推进相位）
+  function resolveLight(phases, elapsedS){
+    if(!phases || !phases.length) return null;
+    var total = 0, i;
+    for(i = 0; i < phases.length; i++){ if(phases[i].p <= 0) return null; total += phases[i].p; }
+    var el = ((elapsedS % total) + total) % total;
+    for(i = 0; i < phases.length; i++){
+      var ph = phases[i];
+      if(el < ph.p){ return { state: ph.s, seconds: Math.max(0, Math.ceil(ph.p - el)) }; }
+      el -= ph.p;
+    }
+    return null;
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     剧本：单一世界时钟 → 速度曲线 → 里程表 → 绝对坐标设施
+     默认演示时基 ×2.5；路口阶段单独切到 1:1 真实时间，
+     让红绿灯读秒与车辆通过都按真实秒速发生。
+     ════════════════════════════════════════════════════════════ */
+  var TIME_SCALE = 2.5;
+  var STAGE1_TIME_SCALE = 1;   // 路口阶段按真实物理时间推进，便于 1:1 读秒
+  var LIGHT_REAL_OFFSET = 2;   // 阶段①开始时，绿灯相位已走过 2s（显示 16s）
+  var LIMIT = 60;
+  var LIGHT_LEAD = 150;    // 胶囊弹出时距停止线（≤300m 阈值）
+  var CAM_LEAD   = 340;    // 胶囊弹出时距电子眼（≤800m 阈值）
+  var INT_LEAD   = 90;     // 胶囊弹出时距区间起点（≤800m 阈值）
+  var INT_LEN    = 260;    // 区间长度
+  var MARK_LCM   = 30;     // 车道虚线 15m / 轮廓标 30m 的公倍数 → 循环接缝无跳变
+
+  // 速度关键帧（世界秒, km/h），段间 smoothstep → 加减速无顿挫
+  var SPEED_KEYS = [
+    [0,52],[19,52],
+    [23,64],[28,64],      // 超速 10% 以内
+    [32,70],[38.5,70],    // 超速 >10%
+    [42.5,52],[47,52],
+    [49.5,56],[63,56],[66,52],
+    [120,52]
+  ];
+  function smooth(u){ return u*u*(3-2*u); }
+  function speedAt(t){
+    if(t <= SPEED_KEYS[0][0]) return SPEED_KEYS[0][1];
+    for(var i=1;i<SPEED_KEYS.length;i++){
+      if(t <= SPEED_KEYS[i][0]){
+        var a=SPEED_KEYS[i-1], b=SPEED_KEYS[i];
+        var u=(t-a[0])/(b[0]-a[0]);
+        return a[1]+(b[1]-a[1])*smooth(u);
+      }
+    }
+    return SPEED_KEYS[SPEED_KEYS.length-1][1];
+  }
+
+  // 预积分里程表：carMeters 与 speed 严格同源，无累积漂移
+  var STEP = 1/120, T_MAX = 120, DIST = [0];
+  (function(){
+    var acc = 0;
+    for(var t=0; t<T_MAX; t+=STEP){
+      acc += speedAt(t+STEP/2)/3.6*STEP;
+      DIST.push(acc);
+    }
+  })();
+  function distAt(t){
+    if(t<=0) return 0;
+    var x = t/STEP, i = Math.floor(x);
+    if(i >= DIST.length-1) return DIST[DIST.length-1] + speedAt(t)/3.6*(t-T_MAX);
+    return DIST[i] + (DIST[i+1]-DIST[i])*(x-i);
+  }
+  function timeAtDist(m){
+    if(m<=0) return 0;
+    var lo=0, hi=DIST.length-1;
+    if(m >= DIST[hi]) return T_MAX + (m-DIST[hi])/(52/3.6);
+    while(hi-lo > 1){ var mid=(lo+hi)>>1; if(DIST[mid] <= m) lo=mid; else hi=mid; }
+    var span = DIST[hi]-DIST[lo];
+    return (lo + (span>0 ? (m-DIST[lo])/span : 0))*STEP;
+  }
+
+  var S = {};
+  (function buildScript(){
+    S.cruiseEnd = 8;
+    S.stopPos   = distAt(S.cruiseEnd) + LIGHT_LEAD;
+    S.passStop  = timeAtDist(S.stopPos);
+    S.camShow   = S.passStop + 2.1;                       // 路口驶离，进入阶段③
+    S.camPos    = distAt(S.camShow) + CAM_LEAD;
+    S.passCam   = timeAtDist(S.camPos);
+    S.intShow   = S.passCam + 6.4;                        // 车速回落完成，进入阶段④
+    S.intStart  = distAt(S.intShow) + INT_LEAD;
+    S.intEnter  = timeAtDist(S.intStart);
+    S.intEnd    = S.intStart + INT_LEN;
+    S.intExit   = timeAtDist(S.intEnd);
+    S.loopM     = Math.ceil(distAt(S.intExit + 0.6)/MARK_LCM)*MARK_LCM;
+    S.loopT     = timeAtDist(S.loopM);
+    // 阶段边界（米）——与胶囊弹出点严格重合
+    S.bound = [0, S.stopPos-LIGHT_LEAD, S.camPos-CAM_LEAD, S.intStart-INT_LEAD, S.loopM];
+    S.stage1T = timeAtDist(S.bound[1]);
+    S.entities = [
+      {type:"sign",pos:100,limit:LIMIT},
+      {type:"intersection",pos:S.stopPos},
+      {type:"sign",pos:430,limit:LIMIT},
+      {type:"gantry",pos:S.camPos,kind:"speed",limit:LIMIT},
+      {type:"sign",pos:720,limit:LIMIT},
+      {type:"gantry",pos:S.intStart,kind:"interval-start",limit:LIMIT},
+      {type:"sign",pos:980,limit:LIMIT},
+      {type:"gantry",pos:S.intEnd,kind:"interval-end",limit:LIMIT}
+    ];
+    // 直行相位按真实秒计：阶段①开始时绿灯剩 16s，通过停止线仍为绿灯
+    S.phases = [{s:"GREEN",p:18},{s:"YELLOW",p:3},{s:"RED",p:26}];
+  })();
+
+  function stageForMeters(m){
+    return m < S.bound[1] ? 0 : m < S.bound[2] ? 1 : m < S.bound[3] ? 2 : 3;
+  }
+  function lightPhaseAt(){
+    // 红绿灯独立于演示时基：阶段①内严格按真实秒推进
+    return resolveLight(S.phases, sim.lightReal);
+  }
+
+
+  /* ════════════════════════════════════════════════════════════
+     单一 simState —— 左右两侧 100% 由此实时计算
+     ════════════════════════════════════════════════════════════ */
+  var sim = {
+    running:true, t:0, carMeters:0, speed:52, limit:LIMIT,
+    stage:0, introFade:0, loops:0,
+    cameraAhead:false, phase:"NONE", over:"NORMAL", avgState:"NORMAL",
+    camVisible:false, camKind:"speed", camDist:0, camLabel:"", camSign:LIMIT,
+    avgVisible:false, avg:0,
+    lightVisible:false, lightState:"GREEN", lightSeconds:16,
+    lightReal:LIGHT_REAL_OFFSET,
+    brake:false, ambient:[],
+    beat:"", beatTone:""
+  };
+
+  function spawnAmbient(){
+    sim.ambient = [
+      { pos: sim.carMeters + 150 + Math.random()*90, lane:-0.62, speed: 40 + Math.random()*12, hue:0 },
+      { pos: sim.carMeters + 330 + Math.random()*140, lane: 0.62, speed: 46 + Math.random()*14, hue:1 }
+    ];
+  }
+
+  /* ── 由 simState 推导所有 UI 状态（每帧） ── */
+  function derive(){
+    var car = sim.carMeters, t = sim.t;
+    var prevStage = sim.stage;
+    var stage = stageForMeters(car);
+    if(stage === 1 && prevStage !== 1) sim.lightReal = LIGHT_REAL_OFFSET;
+    sim.stage = stage;
+
+    // 剧本同一时刻只上报一处设施 → 底部胶囊天然互斥，零重叠
+    var camVisible=false, camKind="speed", camDist=0, camLabel="", cameraAhead=false;
+    var lightVisible=false, lightState="GREEN", lightSeconds=0;
+    var phase="NONE", inside=false, approaching=false, avgVisible=false, avg=0;
+
+    if(stage === 1){
+      var dStop = S.stopPos - car;
+      if(dStop > 0 && dStop <= LIGHT_ALERT_RANGE_M){
+        var r = lightPhaseAt();
+        if(r && r.state !== "OFF" && r.state !== "UNKNOWN"){
+          lightVisible = true; lightState = r.state; lightSeconds = r.seconds;
+        }
+      }
+    } else if(stage === 2){
+      var dCam = S.camPos - car;
+      if(dCam > 0 && dCam <= CAMERA_ALERT_RANGE_M){
+        cameraAhead = true; camVisible = true; camKind = "speed";
+        camDist = dCam; camLabel = "测速拍照";
+      }
+    } else if(stage === 3){
+      var dStart = S.intStart - car, dEnd = S.intEnd - car;
+      if(car >= S.intStart && car < S.intEnd){
+        inside = true; phase = "INSIDE";
+        cameraAhead = true; camVisible = true; camKind = "interval";
+        camDist = dEnd; camLabel = "区间测速结束";
+        var elapsed = t - S.intEnter;
+        if(elapsed > 0.12){ avg = (car - S.intStart)/elapsed*3.6; avgVisible = true; }
+      } else if(car < S.intStart && dStart <= CAMERA_ALERT_RANGE_M){
+        approaching = true; phase = "APPROACH";
+        cameraAhead = true; camVisible = true; camKind = "interval";
+        camDist = dStart; camLabel = "进入区间测速";
+      }
+    }
+
+    sim.phase = phase;
+    sim.cameraAhead = cameraAhead;
+    sim.camVisible = camVisible; sim.camKind = camKind; sim.camDist = camDist;
+    sim.camLabel = camLabel; sim.camSign = LIMIT;
+    sim.lightVisible = lightVisible; sim.lightState = lightState; sim.lightSeconds = lightSeconds;
+    sim.over = classify(sim.speed, sim.limit, cameraAhead, phase);
+    sim.avgVisible = avgVisible; sim.avg = avg;
+    sim.avgState = averageState(avg, LIMIT);
+    sim.brake = speedAt(t + 0.18) < sim.speed - 0.35;
+
+    // 左侧剧本旁白
+    var beat="", tone="";
+    if(stage === 0){ beat = "巡航稳定 · 限速内行驶"; }
+    else if(stage === 1){
+      if(lightVisible){ beat = "直行绿灯 " + lightSeconds + "s · 不停车通过"; tone="ok"; }
+      else { beat = "已驶过停止线 · 路口清空"; tone="ok"; }
+    } else if(stage === 2){
+      if(sim.over === "SEVERE"){ beat = "超速 >10% · 严重超速闪烁"; tone="severe"; }
+      else if(sim.over === "OVER"){ beat = "超速 10% 以内 · 仪表变红"; tone="warn"; }
+      else if(camVisible){ beat = "接近测速电子眼 · 车速正常"; }
+      else { beat = "已驶过电子眼 · 车速回落"; tone="ok"; }
+    } else {
+      if(inside){ beat = "区间平均 " + Math.round(avg) + " km/h · 低于限速"; tone="ok"; }
+      else if(approaching){ beat = "前方区间测速起点"; }
+      else { beat = "已驶出区间 · 恢复巡航"; tone="ok"; }
+    }
+    sim.beat = beat; sim.beatTone = tone;
+  }
+
+  /* ── 推进仿真（仅 running） ── */
+  function advance(dt, rawDt){
+    sim.introFade = Math.min(1, sim.introFade + dt/0.7);
+    if(!sim.running) return;
+
+    var stageNow = stageForMeters(sim.carMeters);
+    var stage1Dt = Math.min(0.5, rawDt == null ? dt : rawDt);
+    if(stageNow === 1) sim.lightReal += stage1Dt;
+
+    var scale = stageNow === 1 ? STAGE1_TIME_SCALE : TIME_SCALE;
+    var stepDt = stageNow === 1 ? stage1Dt : dt;
+    sim.t += stepDt * scale;
+    if(sim.t >= S.loopT){
+      sim.t -= S.loopT;
+      sim.loops++;
+      sim.introFade = 0;
+      sim.carMeters = distAt(sim.t);
+      spawnAmbient();
+    }
+    sim.carMeters = distAt(sim.t);
+    sim.speed = speedAt(sim.t);
+
+    for(var i=0;i<sim.ambient.length;i++){
+      var a = sim.ambient[i];
+      a.pos += a.speed/3.6*stepDt*scale;
+      if(a.pos < sim.carMeters - 30){ a.pos = sim.carMeters + 420 + Math.random()*180; a.speed = 38 + Math.random()*22; }
+    }
+  }
+
+  function replay(){
+    sim.t = 0; sim.carMeters = 0; sim.speed = speedAt(0);
+    sim.introFade = 0; sim.loops = 0; sim.stage = 0; sim.lightReal = LIGHT_REAL_OFFSET;
+    spawnAmbient();
+    derive(); renderPhone(); renderHUD(); renderRoad();
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     右侧手机渲染（流式 DOM，零重叠）
+     ════════════════════════════════════════════════════════════ */
+  var gaugeWrap=$("gaugeWrap"), gaugeFill=$("gaugeFill"), speedNum=$("speedNum"),
+      statusBadge=$("statusBadge"), limitSign=$("limitSign"), limitNum=$("limitNum"),
+      avgSlot=$("avgSlot"), avgDial=$("avgDial"), avgFill=$("avgFill"), avgNum=$("avgNum"),
+      camSlot=$("camSlot"), camSign=$("camSign"), camDist=$("camDist"), camLabel=$("camLabel"),
+      camIconSpeed=$("camIconSpeed"), camIconInterval=$("camIconInterval"),
+      lightSlot=$("lightSlot"), dotRed=$("dotRed"), dotYellow=$("dotYellow"),
+      dotGreen=$("dotGreen"), lightCount=$("lightCount");
+  var GAUGE_C = 892.21, GAUGE_ARC = 669.16, AVG_C = 375.30;
+  var cache = {};
+
+  function setText(el, key, val){ if(cache[key] !== val){ cache[key] = val; el.textContent = val; } }
+  function setClass(el, key, cls, on){ var k = key+"|"+cls; if(cache[k] !== on){ cache[k] = on; el.classList.toggle(cls, on); } }
+
+  function renderPhone(){
+    var spd = Math.round(sim.speed);
+    setText(speedNum, "spd", String(spd));
+    var frac = Math.max(0, Math.min(1, sim.speed / 200));
+    var dash = (GAUGE_ARC * frac).toFixed(2) + " " + GAUGE_C;
+    if(cache.gdash !== dash){ cache.gdash = dash; gaugeFill.setAttribute("stroke-dasharray", dash); }
+
+    var over = sim.over === "OVER" || sim.over === "SEVERE";
+    var severe = sim.over === "SEVERE";
+    setClass(gaugeWrap, "gw", "over", over);
+    setClass(gaugeWrap, "gw", "severe", severe);
+    setClass(statusBadge, "sb", "show", over);
+    setClass(statusBadge, "sb", "severe", severe);
+    setText(statusBadge, "sbt", severe ? "超速 · 前方测速" : "超速");
+
+    setText(limitNum, "lim", String(sim.limit));
+    setClass(limitSign, "ls", "hide", sim.limit == null);
+
+    // 区间平均圆盘（128dp）
+    setClass(avgSlot, "as", "show", sim.avgVisible);
+    setText(avgNum, "avg", String(Math.round(sim.avg)));
+    var afrac = Math.max(0, Math.min(1, sim.avg / (LIMIT * 1.2)));
+    var adash = (AVG_C * afrac).toFixed(2) + " " + AVG_C;
+    if(cache.adash !== adash){ cache.adash = adash; avgFill.setAttribute("stroke-dasharray", adash); }
+    setClass(avgDial, "ad", "over", sim.avgState === "OVER" || sim.avgState === "SEVERE");
+    setClass(avgDial, "ad", "severe", sim.avgState === "SEVERE");
+
+    // 电子眼 / 区间胶囊
+    setClass(camSlot, "cs", "show", sim.camVisible);
+    if(sim.camVisible){
+      setText(camSign, "csign", String(sim.camSign));
+      setText(camDist, "cdist", fmtDist(sim.camDist));
+      setText(camLabel, "clabel", " 后 · " + sim.camLabel);
+      var isInterval = sim.camKind === "interval";
+      if(cache.cicon !== isInterval){ cache.cicon = isInterval;
+        camIconSpeed.style.display = isInterval ? "none" : "block";
+        camIconInterval.style.display = isInterval ? "block" : "none";
+      }
+    }
+
+    // 单行直行绿灯胶囊
+    setClass(lightSlot, "lt", "show", sim.lightVisible);
+    if(sim.lightVisible){
+      var st = sim.lightState;
+      var flash = st === "FLASHING_YELLOW";
+      setClass(dotRed, "dr", "on", st === "RED");
+      setClass(dotYellow, "dy", "on", st === "YELLOW" || flash);
+      setClass(dotGreen, "dg", "on", st === "GREEN");
+      setClass(dotYellow, "dyf", "flash", flash);
+      var showSec = !flash && sim.lightSeconds > 0;
+      setClass(lightCount, "lce", "empty", !showSec);
+      setText(lightCount, "lct", showSec ? String(sim.lightSeconds) : "");
+    }
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     左侧 HUD + 顶部 4 段切换（同样 100% 来自 simState）
+     ════════════════════════════════════════════════════════════ */
+  var stageTitle=$("stageTitle"), stageSub=$("stageSub"),
+      nextChip=$("nextChip"), nextDist=$("nextDist"), stepsEl=$("steps");
+  var stepEls = stepsEl.querySelectorAll(".step");
+  var STAGE_NAMES = ["正常巡航","路口绿灯","测速电子眼","区间测速"];
+
+  function chipDist(m){
+    m = Math.max(0, m);
+    return m >= 1000 ? (m / 1000).toFixed(1) + " km" : Math.round(m) + " m";
+  }
+
+  function renderHUD(){
+    var car = sim.carMeters, stage = sim.stage;
+
+    if(cache.title !== stage){
+      cache.title = stage;
+      stageTitle.textContent = STAGE_NAMES[stage];
+      stageTitle.classList.remove("flip"); void stageTitle.offsetWidth; stageTitle.classList.add("flip");
+    }
+
+    var sub;
+    if(stage === 0){ sub = "限速 " + sim.limit + " · 正常通过"; }
+    else if(stage === 1){
+      sub = sim.lightVisible ? "限速 " + sim.limit + " · 绿灯 " + sim.lightSeconds + "s" : "限速 " + sim.limit + " · 正常通过";
+    }
+    else if(stage === 2){
+      sub = (sim.over === "OVER" || sim.over === "SEVERE") ? "限速 " + sim.limit + " · 超速预警" : "限速 " + sim.limit + " · 正常通过";
+    }
+    else {
+      sub = sim.avgVisible ? "限速 " + sim.limit + " · 区间平均 " + Math.round(sim.avg)
+          : (car < S.intStart ? "限速 " + sim.limit + " · 区间测速" : "限速 " + sim.limit + " · 区间通过");
+    }
+    setText(stageSub, "ss", sub);
+
+    // 舞台上最多一个关键数字：路口停止线 / 测速电子眼 / 区间终点
+    var dist = null;
+    if(stage === 1){ var d1 = S.stopPos - car; if(d1 > 0) dist = d1; }
+    else if(stage === 2){ var d2 = S.camPos - car; if(d2 > 0) dist = d2; }
+    else if(stage === 3 && car >= S.intStart && car < S.intEnd){ dist = S.intEnd - car; }
+
+    if(dist != null && dist > 0){
+      setClass(nextChip, "nc", "hide", false);
+      nextChip.removeAttribute("aria-hidden");
+      setText(nextDist, "nd", chipDist(dist));
+    } else {
+      setClass(nextChip, "nc", "hide", true);
+      nextChip.setAttribute("aria-hidden", "true");
+    }
+
+    for(var k=0;k<4;k++){
+      var done = k < stage, active = k === stage;
+      setClass(stepEls[k], "st"+k, "done", done);
+      setClass(stepEls[k], "st"+k, "active", active);
+      if(cache["sa"+k] !== active){
+        cache["sa"+k] = active;
+        if(active) stepEls[k].setAttribute("aria-current","step"); else stepEls[k].removeAttribute("aria-current");
+      }
+    }
+  }
+
+  function seekStage(idx){
+    var t = idx === 0 ? 0 : timeAtDist(S.bound[idx]);
+    sim.t = Math.max(0, Math.min(S.loopT - 1e-6, t));
+    sim.carMeters = distAt(sim.t);
+    sim.speed = speedAt(sim.t);
+    sim.introFade = 1;
+    sim.stage = stageForMeters(sim.carMeters);
+    sim.lightReal = LIGHT_REAL_OFFSET + Math.max(0, (sim.t - S.stage1T) / STAGE1_TIME_SCALE);
+    spawnAmbient();
+    derive(); renderPhone(); renderHUD(); renderRoad();
+  }
+  for(var sj=0; sj<stepEls.length; sj++){
+    stepEls[sj].addEventListener("click", function(){
+      seekStage(parseInt(this.getAttribute("data-stage"), 10) || 0);
+    });
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     左侧 2.5D 透视路面（Canvas）
+     ════════════════════════════════════════════════════════════ */
+  var canvas=$("roadCanvas"), ctx=canvas.getContext("2d"), stage=$("roadStage");
+  var W=0,H=0,dpr=1, horizonY=0, baseY=0, cx=0, roadHalf=0;
+  var NEAR=26, VIEW=1000, EVIEW=640;
+  var SANS='-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif';
+  var asphaltPattern=null;
+
+  function makeAsphaltPattern(){
+    var pc=document.createElement("canvas"); pc.width=96; pc.height=96;
+    var pctx=pc.getContext("2d"), seed=9;
+    function rnd(){ seed=(seed*16807)%2147483647; return seed/2147483647; }
+    for(var i=0;i<320;i++){
+      var x=rnd()*96, y=rnd()*96, r=0.35+rnd()*0.9;
+      pctx.fillStyle = rnd()>0.5 ? "rgba(255,255,255,"+(0.018+rnd()*0.026)+")" : "rgba(54,66,78,"+(0.014+rnd()*0.024)+")";
+      pctx.beginPath(); pctx.arc(x,y,r,0,Math.PI*2); pctx.fill();
+    }
+    return ctx.createPattern(pc,"repeat");
+  }
+
+  function resize(){
+    var r = stage.getBoundingClientRect();
+    W = Math.max(1, r.width); H = Math.max(1, r.height);
+    dpr = Math.min(2, window.devicePixelRatio || 1);
+    canvas.width = Math.round(W*dpr); canvas.height = Math.round(H*dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    horizonY = H*0.365; baseY = H*1.16; cx = W*0.5; roadHalf = W*0.455;
+    if(!asphaltPattern) asphaltPattern = makeAsphaltPattern();
+  }
+  if(window.ResizeObserver){ new ResizeObserver(resize).observe(stage); }
+  window.addEventListener("resize", resize);
+
+  function proj(d){
+    var k = NEAR/(NEAR + Math.max(d,-14));
+    return { k:k, y:horizonY+(baseY-horizonY)*k, half:roadHalf*k };
+  }
+  function latX(p, lat){ return cx + lat*p.half; }
+  function nearFade(d){ return d<10 ? Math.max(0,d/10) : 1; }
+  function farFade(d){ return d>VIEW*0.7 ? Math.max(0,1-(d-VIEW*0.7)/(VIEW*0.3)) : 1; }
+  function entAlpha(d){
+    var f = d>EVIEW*0.7 ? Math.max(0,1-(d-EVIEW*0.7)/(EVIEW*0.3)) : 1;
+    return nearFade(d)*f*sim.introFade;
+  }
+
+  function roundRect(x,y,w,h,r){
+    r=Math.min(r,w/2,h/2);
+    ctx.beginPath();
+    ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+  }
+
+  function drawSky(){
+    var g=ctx.createLinearGradient(0,0,0,horizonY+H*0.12);
+    g.addColorStop(0,"#f8fbfd"); g.addColorStop(0.5,"#eef4f9"); g.addColorStop(0.84,"#e3ebf2"); g.addColorStop(1,"#d8e2eb");
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,horizonY+H*0.12);
+
+    ctx.save();
+    var glow=ctx.createRadialGradient(cx,horizonY,0,cx,horizonY,W*0.44);
+    glow.addColorStop(0,"rgba(255,255,255,.85)");
+    glow.addColorStop(0.4,"rgba(255,255,255,.3)");
+    glow.addColorStop(1,"rgba(255,255,255,0)");
+    ctx.fillStyle=glow; ctx.fillRect(0,0,W,horizonY+H*0.08);
+
+    // 远方极淡的天际轮廓，只负责让地平线不生硬
+    ctx.beginPath();
+    ctx.moveTo(0,horizonY);
+    for(var x=0;x<=W;x+=W/14){
+      var y=horizonY-H*(0.014+0.010*Math.sin(x*0.023+1.1)+0.007*Math.sin(x*0.049+0.4));
+      ctx.lineTo(x,y);
+    }
+    ctx.lineTo(W,horizonY); ctx.closePath();
+    ctx.fillStyle="rgba(171,189,202,.20)"; ctx.fill();
+
+    // 地平线柔光：从冷灰过渡到路面
+    var hb=ctx.createLinearGradient(0,horizonY-H*0.055,0,horizonY+H*0.04);
+    hb.addColorStop(0,"rgba(255,255,255,0)");
+    hb.addColorStop(0.52,"rgba(255,255,255,.64)");
+    hb.addColorStop(1,"rgba(255,255,255,0)");
+    ctx.fillStyle=hb; ctx.fillRect(0,horizonY-H*0.055,W,H*0.095);
+    ctx.restore();
+
+    var gg=ctx.createLinearGradient(0,horizonY,0,H);
+    gg.addColorStop(0,"#dfe7ee"); gg.addColorStop(0.36,"#e7edf2"); gg.addColorStop(1,"#eff3f6");
+    ctx.fillStyle=gg; ctx.fillRect(0,horizonY,W,H-horizonY);
+    ctx.fillStyle="rgba(191,205,198,.15)"; ctx.fillRect(0,horizonY,W,H*0.028);
+  }
+
+  function drawRoad(){
+    var pf=proj(VIEW), pn=proj(-14);
+    function traceRoad(lat){
+      ctx.beginPath();
+      ctx.moveTo(latX(pf,-lat),pf.y); ctx.lineTo(latX(pf,lat),pf.y);
+      ctx.lineTo(latX(pn,lat),pn.y); ctx.lineTo(latX(pn,-lat),pn.y); ctx.closePath();
+    }
+
+    // 路肩 / 路缘，给路面一个柔和的边界
+    traceRoad(1.24);
+    var vg=ctx.createLinearGradient(0,pf.y,0,pn.y);
+    vg.addColorStop(0,"#ccd5d2"); vg.addColorStop(1,"#c3cdca");
+    ctx.fillStyle=vg; ctx.fill();
+
+    traceRoad(1);
+    var rg=ctx.createLinearGradient(0,pf.y,0,pn.y);
+    rg.addColorStop(0,"#d5dde5"); rg.addColorStop(0.42,"#dbe2e8"); rg.addColorStop(1,"#e6ebef");
+    ctx.fillStyle=rg; ctx.fill();
+
+    if(asphaltPattern){
+      ctx.save(); traceRoad(1); ctx.clip();
+      ctx.globalAlpha=0.6; ctx.fillStyle=asphaltPattern;
+      ctx.fillRect(0,pf.y,W,pn.y-pf.y);
+      ctx.restore();
+    }
+
+    // 中央微亮、两侧收暗，避免整块灰色发闷
+    ctx.save(); traceRoad(1); ctx.clip();
+    var sheen=ctx.createLinearGradient(cx-W*0.5,0,cx+W*0.5,0);
+    sheen.addColorStop(0,"rgba(66,80,94,.10)");
+    sheen.addColorStop(0.28,"rgba(255,255,255,.015)");
+    sheen.addColorStop(0.5,"rgba(255,255,255,.11)");
+    sheen.addColorStop(0.72,"rgba(255,255,255,.015)");
+    sheen.addColorStop(1,"rgba(66,80,94,.10)");
+    ctx.fillStyle=sheen; ctx.fillRect(0,pf.y,W,pn.y-pf.y);
+    ctx.restore();
+
+    drawStrip(-0.972,0.014,"rgba(255,255,255,.78)");
+    drawStrip(0.972,0.014,"rgba(255,255,255,.78)");
+    drawStrip(-1,0.03,"rgba(255,255,255,.30)");
+    drawStrip(1,0.03,"rgba(255,255,255,.30)");
+
+    var cycle=15, dash=6.2;
+    var start=Math.floor((sim.carMeters-20)/cycle);
+    for(var n=start;n<start+Math.ceil(VIEW/cycle)+2;n++){
+      var d1=n*cycle - sim.carMeters, d2=d1+dash;
+      if(d2<=0||d1>VIEW) continue;
+      d1=Math.max(d1,0.5);
+      drawDash(-1/3,d1,d2); drawDash(1/3,d1,d2);
+    }
+    drawPosts();
+  }
+  function drawPosts(){
+    var cycle=30;
+    var start=Math.floor((sim.carMeters-10)/cycle);
+    for(var n=start;n<start+Math.ceil(VIEW/cycle)+2;n++){
+      var d=n*cycle - sim.carMeters;
+      if(d<=1||d>VIEW) continue;
+      var p=proj(d), a=nearFade(d)*farFade(d); if(a<=0) continue;
+      var h=p.half, ph=h*0.085, pw=Math.max(0.8,h*0.016);
+      ctx.save(); ctx.globalAlpha=a*0.95;
+      var sides=[-1.07,1.07];
+      for(var s2=0;s2<2;s2++){
+        var x=latX(p,sides[s2]);
+        ctx.beginPath(); ctx.ellipse(x,p.y,pw*1.6,pw*0.55,0,0,Math.PI*2);
+        ctx.fillStyle="rgba(38,48,58,.10)"; ctx.fill();
+        roundRect(x-pw/2,p.y-ph,pw,ph,pw*0.32);
+        var pg=ctx.createLinearGradient(x-pw/2,0,x+pw/2,0);
+        pg.addColorStop(0,"#e9eef3"); pg.addColorStop(0.45,"#ffffff"); pg.addColorStop(1,"#c9d1d9");
+        ctx.fillStyle=pg; ctx.fill();
+        ctx.lineWidth=Math.max(0.4,pw*0.12); ctx.strokeStyle="rgba(72,84,96,.16)"; ctx.stroke();
+        ctx.fillStyle="rgba(0,122,255,.62)";
+        ctx.fillRect(x-pw/2,p.y-ph*0.82,pw,Math.max(0.8,ph*0.11));
+      }
+      ctx.restore();
+    }
+  }
+  function drawStrip(lat,wFrac,color){
+    var pf=proj(VIEW), pn=proj(-14);
+    var wf=pf.half*wFrac, wn=pn.half*wFrac;
+    ctx.fillStyle=color;
+    ctx.beginPath();
+    ctx.moveTo(latX(pf,lat)-wf,pf.y); ctx.lineTo(latX(pf,lat)+wf,pf.y);
+    ctx.lineTo(latX(pn,lat)+wn,pn.y); ctx.lineTo(latX(pn,lat)-wn,pn.y); ctx.closePath(); ctx.fill();
+  }
+  function drawDash(lat,d1,d2){
+    var p1=proj(d1), p2=proj(d2);
+    var w1=Math.max(0.6,p1.half*0.022), w2=Math.max(0.4,p2.half*0.022);
+    var x1=latX(p1,lat), x2=latX(p2,lat);
+    ctx.fillStyle="rgba(255,255,255,.88)";
+    ctx.beginPath();
+    ctx.moveTo(x1-w1,p1.y); ctx.lineTo(x1+w1,p1.y);
+    ctx.lineTo(x2+w2,p2.y); ctx.lineTo(x2-w2,p2.y); ctx.closePath(); ctx.fill();
+  }
+
+  function drawSign(e){
+    var d=e.pos-sim.carMeters; if(d<=0||d>EVIEW) return;
+    var a=entAlpha(d); if(a<=0) return;
+    var p=proj(d), x=latX(p,1.16), h=p.half;
+    ctx.save(); ctx.globalAlpha=a;
+
+    var postH=h*0.44, r=h*0.165, pw=Math.max(0.75,h*0.016);
+    ctx.beginPath(); ctx.ellipse(x,p.y,pw*2.3,pw*0.8,0,0,Math.PI*2);
+    ctx.fillStyle="rgba(38,48,58,.10)"; ctx.fill();
+
+    roundRect(x-pw/2,p.y-postH,pw,postH,pw*0.5);
+    var pg=ctx.createLinearGradient(x-pw/2,0,x+pw/2,0);
+    pg.addColorStop(0,"#b7c0c9"); pg.addColorStop(0.45,"#eef2f6"); pg.addColorStop(1,"#9ea8b2");
+    ctx.fillStyle=pg; ctx.fill();
+
+    roundRect(x-r*0.16,p.y-postH-r*0.12,r*0.32,r*0.24,r*0.08);
+    ctx.fillStyle="#9aa4ae"; ctx.fill();
+
+    var cyS=p.y-postH-r*0.06;
+    ctx.save();
+    ctx.shadowColor="rgba(35,46,57,.22)"; ctx.shadowBlur=r*0.55; ctx.shadowOffsetY=r*0.16;
+    ctx.beginPath(); ctx.arc(x,cyS,r,0,Math.PI*2);
+    var sg=ctx.createLinearGradient(x,cyS-r,x,cyS+r);
+    sg.addColorStop(0,"#ffffff"); sg.addColorStop(1,"#f4f6f8");
+    ctx.fillStyle=sg; ctx.fill();
+    ctx.restore();
+
+    ctx.lineWidth=Math.max(1,r*0.23); ctx.strokeStyle="#ff3b30";
+    ctx.beginPath(); ctx.arc(x,cyS,r*0.91,0,Math.PI*2); ctx.stroke();
+    ctx.strokeStyle="rgba(255,255,255,.75)"; ctx.lineWidth=Math.max(0.4,r*0.045);
+    ctx.beginPath(); ctx.arc(x,cyS,r*0.74,0,Math.PI*2); ctx.stroke();
+
+    ctx.fillStyle="#1a1c20"; ctx.font="700 "+(r*0.92)+"px "+SANS;
+    ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(String(e.limit), x, cyS+r*0.055);
+    ctx.restore();
+  }
+
+  function drawGantry(e){
+    var d=e.pos-sim.carMeters; if(d<=0||d>EVIEW) return;
+    var a=entAlpha(d); if(a<=0) return;
+    var p=proj(d), h=p.half, topY=p.y-h*0.72;
+    ctx.save(); ctx.globalAlpha=a;
+
+    // 立柱接地阴影 + 金属渐变
+    var colW=Math.max(1,h*0.05), lx=latX(p,-1.14), rx=latX(p,1.14);
+    [lx,rx].forEach(function(x){
+      ctx.beginPath(); ctx.ellipse(x,p.y,colW*1.5,colW*0.42,0,0,Math.PI*2);
+      ctx.fillStyle="rgba(36,47,58,.12)"; ctx.fill();
+      roundRect(x-colW/2,topY,colW,p.y-topY,colW*0.3);
+      var cg=ctx.createLinearGradient(x-colW/2,0,x+colW/2,0);
+      cg.addColorStop(0,"#737f8b"); cg.addColorStop(0.38,"#c2ccd5"); cg.addColorStop(0.72,"#9aa5b0"); cg.addColorStop(1,"#68747f");
+      ctx.fillStyle=cg; ctx.fill();
+      ctx.lineWidth=Math.max(0.4,colW*0.07); ctx.strokeStyle="rgba(50,61,72,.16)"; ctx.stroke();
+      roundRect(x-colW*0.9,p.y-colW*0.34,colW*1.8,colW*0.34,colW*0.12);
+      ctx.fillStyle="#6f7a85"; ctx.fill();
+    });
+
+    // 横向桁架：上亮下暗，少用硬线
+    var bx=latX(p,-1.17), bw=latX(p,1.17)-bx, barH=Math.max(2,h*0.072);
+    roundRect(bx,topY-barH,bw,barH,barH*0.34);
+    var bg=ctx.createLinearGradient(0,topY-barH,0,topY);
+    bg.addColorStop(0,"#c9d2da"); bg.addColorStop(0.42,"#a4afb9"); bg.addColorStop(1,"#7c8792");
+    ctx.fillStyle=bg; ctx.fill();
+    ctx.fillStyle="rgba(255,255,255,.55)";
+    roundRect(bx+barH*0.16,topY-barH+barH*0.13,bw-barH*0.32,barH*0.18,barH*0.09); ctx.fill();
+    ctx.fillStyle="rgba(40,51,62,.16)"; ctx.fillRect(bx,topY-barH*0.14,bw,barH*0.14);
+
+    if(e.kind==="speed"){
+      var cams=[-0.42,0.42];
+      for(var i=0;i<cams.length;i++){
+        var cxp=latX(p,cams[i]), cw=h*0.15, chh=h*0.10;
+        ctx.fillStyle="#68737e";
+        ctx.fillRect(cxp-h*0.010,topY,cw*0.12,h*0.045);
+        roundRect(cxp-cw/2,topY+h*0.038,cw,chh,chh*0.32);
+        var cg2=ctx.createLinearGradient(0,topY+h*0.038,0,topY+h*0.038+chh);
+        cg2.addColorStop(0,"#4a545e"); cg2.addColorStop(1,"#242b32");
+        ctx.fillStyle=cg2; ctx.fill();
+        ctx.beginPath(); ctx.arc(cxp+cw*0.28,topY+h*0.038+chh*0.52,chh*0.17,0,Math.PI*2);
+        ctx.fillStyle="rgba(160,210,255,.7)"; ctx.fill();
+        ctx.beginPath(); ctx.arc(cxp-cw*0.22,topY+h*0.038+chh*0.52,chh*0.10,0,Math.PI*2);
+        ctx.fillStyle="rgba(255,59,48,.9)"; ctx.fill();
+      }
+      drawPanelSign(p, topY, h, e.limit, null);
+    } else {
+      var isStart=e.kind==="interval-start";
+      drawPanelSign(p, topY, h, e.limit, isStart?"区间测速起点":"区间测速终点", isStart?"#007aff":"#2f9e50");
+    }
+    ctx.restore();
+  }
+  function drawPanelSign(p, topY, h, limit, label, labelColor){
+    var pw=h*(label?0.64:0.28), ph=h*0.185;
+    var px=cx-pw/2, py=topY-h*0.055-ph-h*0.014;
+    ctx.save();
+    ctx.shadowColor="rgba(35,46,57,.16)"; ctx.shadowBlur=h*0.03; ctx.shadowOffsetY=h*0.008;
+    roundRect(px,py,pw,ph,ph*0.26);
+    var pg=ctx.createLinearGradient(0,py,0,py+ph);
+    pg.addColorStop(0,"#ffffff"); pg.addColorStop(1,"#f2f5f8");
+    ctx.fillStyle=pg; ctx.fill();
+    ctx.restore();
+    ctx.lineWidth=Math.max(0.5,h*0.004); ctx.strokeStyle="rgba(40,52,64,.12)";
+    roundRect(px,py,pw,ph,ph*0.26); ctx.stroke();
+
+    var r=ph*0.32, sx=px+ph*0.48, sy=py+ph/2;
+    ctx.beginPath(); ctx.arc(sx,sy,r,0,Math.PI*2); ctx.fillStyle="#fff"; ctx.fill();
+    ctx.lineWidth=Math.max(0.8,r*0.25); ctx.strokeStyle="#ff3b30"; ctx.stroke();
+    ctx.fillStyle="#1a1c20"; ctx.font="700 "+(r*0.94)+"px "+SANS;
+    ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(String(limit), sx, sy+r*0.05);
+
+    if(label){
+      var dotR=Math.max(1,ph*0.055);
+      ctx.beginPath(); ctx.arc(px+ph*0.88,sy,dotR,0,Math.PI*2); ctx.fillStyle=labelColor; ctx.fill();
+      ctx.fillStyle=labelColor; ctx.font="600 "+(ph*0.29)+"px "+SANS;
+      ctx.textAlign="left"; ctx.textBaseline="middle";
+      ctx.fillText(label, px+ph*1.0, sy+ph*0.02);
+    }
+  }
+
+  // 路面直行导向箭头
+  function drawLaneArrow(dTail){
+    if(dTail<=1||dTail>EVIEW) return;
+    var pb=proj(dTail), pt=proj(dTail+4.5), ph=proj(dTail+7.5);
+    var xb=latX(pb,0), xt=latX(pt,0), xh=latX(ph,0);
+    var wb=pb.half*0.030, wt=pt.half*0.030, wh=pt.half*0.085;
+    ctx.fillStyle="rgba(255,255,255,.92)";
+    ctx.beginPath();
+    ctx.moveTo(xt-wt,pt.y); ctx.lineTo(xt+wt,pt.y);
+    ctx.lineTo(xb+wb,pb.y); ctx.lineTo(xb-wb,pb.y); ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(xh,ph.y); ctx.lineTo(xt+wh,pt.y); ctx.lineTo(xt-wh,pt.y); ctx.closePath(); ctx.fill();
+  }
+
+  function drawIntersection(e){
+    var d=e.pos-sim.carMeters; if(d<=-26||d>EVIEW) return;
+    var dd=Math.max(d,0.5);
+    var p=proj(dd), h=p.half;
+    var a = d>0 ? entAlpha(dd) : Math.max(0,1+d/26);
+    if(a<=0) return;
+    ctx.save(); ctx.globalAlpha=Math.max(0,Math.min(1,a));
+
+    // 横向路口：柔和的沥青带，不用硬边线
+    var ch=h*0.52, cy=p.y-ch*0.30;
+    var cg=ctx.createLinearGradient(0,cy,0,cy+ch);
+    cg.addColorStop(0,"rgba(210,218,226,.0)");
+    cg.addColorStop(0.16,"rgba(214,222,229,.88)");
+    cg.addColorStop(0.7,"rgba(224,230,236,.94)");
+    cg.addColorStop(1,"rgba(230,235,240,.0)");
+    ctx.fillStyle=cg; ctx.fillRect(0,cy,W,ch);
+
+    if(d>0){
+      // 斑马线
+      var pz=proj(d+3.2), zw=pz.half*0.050;
+      ctx.fillStyle="rgba(255,255,255,.58)";
+      for(var z=-4;z<=4;z++){
+        var zx=latX(pz,z*0.208);
+        roundRect(zx-zw/2,pz.y-Math.max(0.6,pz.half*0.015),zw,Math.max(1.2,pz.half*0.032),zw*0.18);
+        ctx.fill();
+      }
+
+      // 停止线
+      var ps=proj(d-2), sw=Math.max(0.75,ps.half*0.034);
+      ctx.fillStyle="rgba(255,255,255,.93)";
+      ctx.beginPath();
+      ctx.moveTo(latX(ps,-1),ps.y-sw); ctx.lineTo(latX(ps,1),ps.y-sw);
+      ctx.lineTo(latX(ps,1),ps.y+sw); ctx.lineTo(latX(ps,-1),ps.y+sw); ctx.closePath(); ctx.fill();
+
+      drawLaneArrow(d-16);
+
+      // 路口龙门架
+      var poleTop=p.y-h*0.94, colW=Math.max(1,h*0.045);
+      [latX(p,-1.16),latX(p,1.16)].forEach(function(x){
+        ctx.beginPath(); ctx.ellipse(x,p.y,colW*1.45,colW*0.4,0,0,Math.PI*2);
+        ctx.fillStyle="rgba(36,47,58,.11)"; ctx.fill();
+        roundRect(x-colW/2,poleTop,colW,p.y-poleTop,colW*0.3);
+        var cg2=ctx.createLinearGradient(x-colW/2,0,x+colW/2,0);
+        cg2.addColorStop(0,"#737f8b"); cg2.addColorStop(0.42,"#c2ccd5"); cg2.addColorStop(1,"#68747f");
+        ctx.fillStyle=cg2; ctx.fill();
+      });
+      var bx=latX(p,-1.18), bw=latX(p,1.18)-bx, barH=Math.max(2,h*0.064);
+      roundRect(bx,poleTop-barH,bw,barH,barH*0.34);
+      var bg=ctx.createLinearGradient(0,poleTop-barH,0,poleTop);
+      bg.addColorStop(0,"#c9d2da"); bg.addColorStop(1,"#7c8792");
+      ctx.fillStyle=bg; ctx.fill();
+      ctx.fillStyle="rgba(255,255,255,.48)";
+      roundRect(bx+barH*0.16,poleTop-barH+barH*0.13,bw-barH*0.32,barH*0.16,barH*0.08); ctx.fill();
+
+      // 直行灯头（与手机胶囊同一 resolve 结果）
+      var r=lightPhaseAt();
+      var hx=latX(p,0), hw=h*0.105, hh=h*0.27, hy=poleTop+h*0.040;
+      ctx.fillStyle="#8d959e"; ctx.fillRect(hx-h*0.008,poleTop,h*0.016,hy-poleTop);
+      roundRect(hx-hw/2,hy,hw,hh,hw*0.26);
+      var hg=ctx.createLinearGradient(0,hy,0,hy+hh);
+      hg.addColorStop(0,"#3a424a"); hg.addColorStop(0.5,"#22282f"); hg.addColorStop(1,"#151a1f");
+      ctx.fillStyle=hg; ctx.fill();
+      ctx.lineWidth=Math.max(0.4,h*0.003); ctx.strokeStyle="rgba(255,255,255,.16)"; ctx.stroke();
+
+      var lamps=[["RED","#ff3b30"],["YELLOW","#ff9500"],["GREEN","#34c759"]];
+      for(var k=0;k<3;k++){
+        var ly=hy+hh*(0.20+k*0.30), lr=hw*0.235;
+        var lit=r&&r.state===lamps[k][0];
+        ctx.beginPath(); ctx.arc(hx,ly,lr,0,Math.PI*2);
+        if(lit){
+          ctx.save();
+          var lg=ctx.createRadialGradient(hx,ly,lr*0.2,hx,ly,lr*1.7);
+          lg.addColorStop(0,"#ffffff"); lg.addColorStop(0.22,lamps[k][1]); lg.addColorStop(1,"rgba(52,199,89,0)");
+          ctx.shadowColor=lamps[k][1]; ctx.shadowBlur=lr*2.4;
+          ctx.fillStyle=lamps[k][1]; ctx.fill();
+          ctx.restore();
+          ctx.beginPath(); ctx.arc(hx,ly,lr*0.38,0,Math.PI*2);
+          ctx.fillStyle="rgba(255,255,255,.72)"; ctx.fill();
+        } else {
+          ctx.fillStyle="#3c434b"; ctx.fill();
+          ctx.beginPath(); ctx.arc(hx-lr*0.18,ly-lr*0.22,lr*0.28,0,Math.PI*2);
+          ctx.fillStyle="rgba(255,255,255,.07)"; ctx.fill();
+        }
+      }
+
+      // 读秒胶囊
+      if(r && r.seconds>0 && h>W*0.052){
+        var fs=Math.max(6,h*0.070), pillW=fs*2.35, pillH=fs*1.32, pillY=hy+hh+h*0.020;
+        roundRect(hx-pillW/2,pillY,pillW,pillH,pillH*0.5);
+        ctx.fillStyle="rgba(255,255,255,.92)"; ctx.fill();
+        ctx.font="700 "+fs+"px "+SANS; ctx.textAlign="center"; ctx.textBaseline="middle";
+        ctx.fillStyle="#229647"; ctx.fillText(String(r.seconds),hx,pillY+pillH*0.52);
+      }
+    }
+    ctx.restore();
+  }
+
+  function traceCarBody(x,y,w,h){
+    ctx.beginPath();
+    ctx.moveTo(x-w*0.405,y-h*0.105);
+    ctx.bezierCurveTo(x-w*0.435,y-h*0.120,x-w*0.470,y-h*0.200,x-w*0.470,y-h*0.320);
+    ctx.bezierCurveTo(x-w*0.468,y-h*0.400,x-w*0.460,y-h*0.450,x-w*0.445,y-h*0.500);
+    ctx.bezierCurveTo(x-w*0.430,y-h*0.550,x-w*0.415,y-h*0.570,x-w*0.390,y-h*0.605);
+    ctx.bezierCurveTo(x-w*0.365,y-h*0.640,x-w*0.345,y-h*0.690,x-w*0.315,y-h*0.740);
+    ctx.bezierCurveTo(x-w*0.290,y-h*0.790,x-w*0.255,y-h*0.870,x-w*0.225,y-h*0.920);
+    ctx.bezierCurveTo(x-w*0.205,y-h*0.960,x-w*0.185,y-h*0.985,x-w*0.155,y-h*0.992);
+    ctx.bezierCurveTo(x-w*0.080,y-h*1.000,x+w*0.080,y-h*1.000,x+w*0.155,y-h*0.992);
+    ctx.bezierCurveTo(x+w*0.185,y-h*0.985,x+w*0.205,y-h*0.960,x+w*0.225,y-h*0.920);
+    ctx.bezierCurveTo(x+w*0.255,y-h*0.870,x+w*0.290,y-h*0.790,x+w*0.315,y-h*0.740);
+    ctx.bezierCurveTo(x+w*0.345,y-h*0.690,x+w*0.365,y-h*0.640,x+w*0.390,y-h*0.605);
+    ctx.bezierCurveTo(x+w*0.415,y-h*0.570,x+w*0.430,y-h*0.550,x+w*0.445,y-h*0.500);
+    ctx.bezierCurveTo(x+w*0.460,y-h*0.450,x+w*0.468,y-h*0.400,x+w*0.470,y-h*0.320);
+    ctx.bezierCurveTo(x+w*0.470,y-h*0.200,x+w*0.435,y-h*0.120,x+w*0.405,y-h*0.105);
+    ctx.quadraticCurveTo(x,y-h*0.082,x-w*0.405,y-h*0.105);
+    ctx.closePath();
+  }
+
+  function traceCarGlass(x,y,w,h){
+    ctx.beginPath();
+    ctx.moveTo(x-w*0.300,y-h*0.660);
+    ctx.bezierCurveTo(x-w*0.285,y-h*0.695,x-w*0.268,y-h*0.745,x-w*0.245,y-h*0.792);
+    ctx.bezierCurveTo(x-w*0.224,y-h*0.835,x-w*0.202,y-h*0.880,x-w*0.176,y-h*0.908);
+    ctx.quadraticCurveTo(x-w*0.118,y-h*0.928,x-w*0.058,y-h*0.931);
+    ctx.quadraticCurveTo(x,y-h*0.933,x+w*0.058,y-h*0.931);
+    ctx.quadraticCurveTo(x+w*0.118,y-h*0.928,x+w*0.176,y-h*0.908);
+    ctx.bezierCurveTo(x+w*0.202,y-h*0.880,x+w*0.224,y-h*0.835,x+w*0.245,y-h*0.792);
+    ctx.bezierCurveTo(x+w*0.268,y-h*0.745,x+w*0.285,y-h*0.695,x+w*0.300,y-h*0.660);
+    ctx.quadraticCurveTo(x,y-h*0.640,x-w*0.300,y-h*0.660);
+    ctx.closePath();
+  }
+
+  function traceRoofPanel(x,y,w,h){
+    ctx.beginPath();
+    ctx.moveTo(x-w*0.150,y-h*0.972);
+    ctx.quadraticCurveTo(x,y-h*0.992,x+w*0.150,y-h*0.972);
+    ctx.lineTo(x+w*0.118,y-h*0.940);
+    ctx.quadraticCurveTo(x,y-h*0.956,x-w*0.118,y-h*0.940);
+    ctx.closePath();
+  }
+
+  function drawMirror(x,y,w,h,s,bodyB,bodyC){
+    var mw=w*0.068, mh=h*0.026;
+    var mx=x+s*w*0.447, my=y-h*0.640;
+    ctx.save();
+    ctx.fillStyle=bodyC;
+    roundRect(x+s*w*0.402-w*0.012,my-h*0.005,w*0.050,h*0.010,h*0.005);
+    ctx.fill();
+    ctx.shadowColor="rgba(30,40,50,.16)"; ctx.shadowBlur=w*0.010; ctx.shadowOffsetY=h*0.004;
+    ctx.beginPath(); ctx.ellipse(mx,my,mw/2,mh/2,s*0.10,0,Math.PI*2);
+    var mg=ctx.createLinearGradient(0,my-mh/2,0,my+mh/2);
+    mg.addColorStop(0,"#ffffff"); mg.addColorStop(0.58,bodyB); mg.addColorStop(1,bodyC);
+    ctx.fillStyle=mg; ctx.fill();
+    ctx.restore();
+    ctx.strokeStyle="rgba(255,255,255,.55)"; ctx.lineWidth=Math.max(0.4,w*0.0022);
+    ctx.beginPath(); ctx.ellipse(mx,my,mw/2,mh/2,s*0.10,0,Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(mx-s*mw*0.15,my,mw*0.25,mh*0.28,s*0.10,0,Math.PI*2);
+    ctx.fillStyle="rgba(38,48,58,.48)"; ctx.fill();
+  }
+
+  function drawCarModel(x,y,w,h,opts){
+    opts=opts||{};
+    var ego=!!opts.ego, hot=!!opts.brake;
+    var bodyA=opts.bodyA||"#fbfdfe", bodyB=opts.bodyB||"#f1f4f7", bodyC=opts.bodyC||"#d8dfe6", bodyD=opts.bodyD||"#bec8d2";
+    ctx.save();
+
+    // 克制的接地阴影
+    ctx.save();
+    ctx.translate(x,y+h*0.003); ctx.scale(1,0.19);
+    var sh=ctx.createRadialGradient(0,0,w*0.05,0,0,w*0.66);
+    sh.addColorStop(0,"rgba(24,34,44,.26)");
+    sh.addColorStop(0.46,"rgba(26,36,46,.14)");
+    sh.addColorStop(1,"rgba(26,36,46,0)");
+    ctx.fillStyle=sh; ctx.beginPath(); ctx.arc(0,0,w*0.66,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+
+    // 宽厚后轮：端正收在轮拱内
+    var tw=w*0.160, th=h*0.270;
+    [-1,1].forEach(function(s){
+      var tcx=x+s*w*0.365, tcy=y-th*0.47;
+      ctx.beginPath(); ctx.ellipse(tcx,tcy,tw/2,th/2,0,0,Math.PI*2);
+      var tg=ctx.createLinearGradient(tcx-tw/2,0,tcx+tw/2,0);
+      tg.addColorStop(0,"#0d1217"); tg.addColorStop(0.46,"#232b33"); tg.addColorStop(1,"#0b1015");
+      ctx.fillStyle=tg; ctx.fill();
+      ctx.beginPath(); ctx.ellipse(tcx,tcy+th*0.10,tw*0.30,th*0.16,0,0,Math.PI*2);
+      ctx.strokeStyle="rgba(184,196,208,.16)"; ctx.lineWidth=Math.max(0.5,w*0.003); ctx.stroke();
+    });
+
+    // 车体轮廓阴影 + 哑光珍珠银白车漆
+    ctx.save(); ctx.translate(0,h*0.006);
+    traceCarBody(x,y,w,h); ctx.fillStyle="rgba(30,40,50,.20)"; ctx.fill();
+    ctx.restore();
+
+    traceCarBody(x,y,w,h);
+    var bg=ctx.createLinearGradient(x-w*0.45,y-h*1.0,x+w*0.45,y-h*0.04);
+    bg.addColorStop(0,bodyA); bg.addColorStop(0.24,"#ffffff"); bg.addColorStop(0.52,bodyB);
+    bg.addColorStop(0.80,bodyC); bg.addColorStop(1,bodyD);
+    ctx.fillStyle=bg; ctx.fill();
+
+    ctx.save(); traceCarBody(x,y,w,h); ctx.clip();
+
+    // 侧围转折：低对比，保持哑光
+    var side=ctx.createLinearGradient(x-w*0.50,0,x+w*0.50,0);
+    side.addColorStop(0,"rgba(58,70,82,.15)");
+    side.addColorStop(0.18,"rgba(60,72,84,.025)");
+    side.addColorStop(0.52,"rgba(255,255,255,.10)");
+    side.addColorStop(0.84,"rgba(255,255,255,.18)");
+    side.addColorStop(1,"rgba(58,70,82,.12)");
+    ctx.fillStyle=side; ctx.fillRect(x-w*0.52,y-h*1.02,w*1.04,h*1.06);
+
+    // 轮拱线：让后轮明确坐进车身
+    [-1,1].forEach(function(s){
+      var ax=x+s*w*0.365;
+      ctx.beginPath(); ctx.ellipse(ax,y-h*0.115,w*0.086,h*0.145,0,Math.PI*1.02,Math.PI*1.98);
+      ctx.strokeStyle="rgba(34,44,54,.20)"; ctx.lineWidth=Math.max(0.6,w*0.0045); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(ax,y-h*0.095,w*0.073,h*0.105,0,Math.PI,Math.PI*2);
+      ctx.fillStyle="rgba(30,40,50,.07)"; ctx.fill();
+    });
+
+    // 肩线折面：从尾灯两端收向 C 柱
+    ctx.lineCap="round";
+    [-1,1].forEach(function(s){
+      ctx.beginPath();
+      ctx.moveTo(x+s*w*0.438,y-h*0.500);
+      ctx.bezierCurveTo(x+s*w*0.402,y-h*0.535,x+s*w*0.352,y-h*0.575,x+s*w*0.302,y-h*0.615);
+      ctx.strokeStyle="rgba(255,255,255,.55)"; ctx.lineWidth=Math.max(0.6,w*0.0045); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x+s*w*0.442,y-h*0.518);
+      ctx.bezierCurveTo(x+s*w*0.406,y-h*0.553,x+s*w*0.356,y-h*0.593,x+s*w*0.306,y-h*0.633);
+      ctx.strokeStyle="rgba(42,55,68,.12)"; ctx.lineWidth=Math.max(0.5,w*0.0035); ctx.stroke();
+    });
+
+    // 尾门 / 后保钣金缝
+    ctx.beginPath();
+    ctx.moveTo(x-w*0.318,y-h*0.612);
+    ctx.quadraticCurveTo(x,y-h*0.630,x+w*0.318,y-h*0.612);
+    ctx.strokeStyle="rgba(52,65,78,.14)"; ctx.lineWidth=Math.max(0.5,w*0.0035); ctx.stroke();
+    [-1,1].forEach(function(s){
+      ctx.beginPath();
+      ctx.moveTo(x+s*w*0.385,y-h*0.590);
+      ctx.bezierCurveTo(x+s*w*0.402,y-h*0.500,x+s*w*0.415,y-h*0.400,x+s*w*0.432,y-h*0.310);
+      ctx.strokeStyle="rgba(52,65,78,.10)"; ctx.lineWidth=Math.max(0.5,w*0.003); ctx.stroke();
+    });
+    ctx.beginPath();
+    ctx.moveTo(x-w*0.340,y-h*0.335);
+    ctx.quadraticCurveTo(x,y-h*0.355,x+w*0.340,y-h*0.335);
+    ctx.strokeStyle="rgba(52,65,78,.11)"; ctx.lineWidth=Math.max(0.5,w*0.003); ctx.stroke();
+
+    ctx.restore(); // body clip
+
+    // 车体边缘高光，保持干净轮廓
+    traceCarBody(x,y,w,h);
+    ctx.strokeStyle="rgba(255,255,255,.62)"; ctx.lineWidth=Math.max(0.5,w*0.003); ctx.stroke();
+
+    // 深色后窗：规整梯形，留出清晰车顶与 C 柱
+    traceCarGlass(x,y,w,h);
+    var gg=ctx.createLinearGradient(0,y-h*0.93,0,y-h*0.65);
+    gg.addColorStop(0,"#46535f"); gg.addColorStop(0.24,"#2a343d"); gg.addColorStop(0.68,"#1b242c"); gg.addColorStop(1,"#303b45");
+    ctx.fillStyle=gg; ctx.fill();
+    ctx.strokeStyle="rgba(212,220,228,.55)"; ctx.lineWidth=Math.max(0.5,w*0.0028); ctx.stroke();
+
+    // 天幕：车顶中央深色玻璃，四周保留车漆边框
+    traceRoofPanel(x,y,w,h);
+    var rg=ctx.createLinearGradient(0,y-h*0.99,0,y-h*0.94);
+    rg.addColorStop(0,"#4b5965"); rg.addColorStop(0.35,"#2c3740"); rg.addColorStop(1,"#1c242b");
+    ctx.fillStyle=rg; ctx.fill();
+    ctx.strokeStyle="rgba(255,255,255,.22)"; ctx.lineWidth=Math.max(0.4,w*0.0022); ctx.stroke();
+
+    ctx.save(); traceCarGlass(x,y,w,h); ctx.clip();
+    ctx.beginPath();
+    ctx.moveTo(x-w*0.280,y-h*0.795); ctx.lineTo(x-w*0.020,y-h*0.930);
+    ctx.lineTo(x+w*0.075,y-h*0.930); ctx.lineTo(x-w*0.215,y-h*0.755); ctx.closePath();
+    var refl=ctx.createLinearGradient(x-w*0.280,y-h*0.80,x+w*0.020,y-h*0.92);
+    refl.addColorStop(0,"rgba(255,255,255,0)"); refl.addColorStop(0.46,"rgba(255,255,255,.13)"); refl.addColorStop(1,"rgba(255,255,255,0)");
+    ctx.fillStyle=refl; ctx.fill();
+    ctx.restore();
+
+    // 小巧后视镜
+    drawMirror(x,y,w,h,-1,bodyB,bodyC);
+    drawMirror(x,y,w,h,1,bodyB,bodyC);
+
+    // 深色后保 / 扩散器 / 反光片
+    var dw=w*0.500, dh=h*0.055, dx=x-dw/2, dy=y-h*0.108;
+    roundRect(dx,dy,dw,dh,dh*0.28);
+    var dg=ctx.createLinearGradient(0,dy,0,dy+dh);
+    dg.addColorStop(0,"#333c45"); dg.addColorStop(1,"#171d23");
+    ctx.fillStyle=dg; ctx.fill();
+    for(var fi=0;fi<4;fi++){
+      var fx=dx+dw*(0.18+fi*0.215);
+      ctx.fillStyle="rgba(255,255,255,.07)";
+      ctx.fillRect(fx,dy+dh*0.25,Math.max(0.5,w*0.0035),dh*0.55);
+    }
+    roundRect(x-w*0.360,y-h*0.073,w*0.720,h*0.012,h*0.006);
+    ctx.fillStyle="rgba(38,46,55,.62)"; ctx.fill();
+    [-1,1].forEach(function(s){
+      roundRect(x+s*w*0.320-w*0.035,y-h*0.165,w*0.070,h*0.040,h*0.014);
+      ctx.fillStyle="rgba(40,48,57,.42)"; ctx.fill();
+      ctx.lineWidth=Math.max(0.4,w*0.0025); ctx.strokeStyle="rgba(255,255,255,.08)"; ctx.stroke();
+      roundRect(x+s*w*0.335-w*0.021,y-h*0.205,w*0.042,h*0.012,h*0.005);
+      ctx.fillStyle="rgba(214,72,64,.38)"; ctx.fill();
+    });
+
+    // 干净平直的贯穿式 LED 尾灯
+    var ly=y-h*0.515, lh=h*0.028, lw=w*0.780;
+    ctx.save();
+    roundRect(x-lw*0.515,ly-lh*0.55,lw*1.03,lh*2.1,lh*0.5);
+    var lhbg=ctx.createLinearGradient(0,ly-lh*0.55,0,ly+lh*1.55);
+    lhbg.addColorStop(0,"rgba(80,32,31,.16)"); lhbg.addColorStop(1,"rgba(52,20,20,.08)");
+    ctx.fillStyle=lhbg; ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.shadowColor=hot?"rgba(255,55,45,.95)":"rgba(226,64,56,.32)";
+    ctx.shadowBlur=hot?w*0.14:w*0.045;
+    roundRect(x-lw/2,ly,lw,lh,lh*0.48);
+    var tlg=ctx.createLinearGradient(0,ly,0,ly+lh);
+    if(hot){ tlg.addColorStop(0,"#ffe0db"); tlg.addColorStop(0.24,"#ff6257"); tlg.addColorStop(1,"#c91e18"); }
+    else { tlg.addColorStop(0,"#e7a09a"); tlg.addColorStop(0.42,"#c74d48"); tlg.addColorStop(1,"#8c2522"); }
+    ctx.fillStyle=tlg; ctx.fill();
+    ctx.restore();
+    ctx.strokeStyle=hot?"rgba(255,246,243,.92)":"rgba(255,224,220,.44)";
+    ctx.lineWidth=Math.max(0.5,h*0.004);
+    ctx.beginPath(); ctx.moveTo(x-lw*0.40,ly+lh*0.46); ctx.lineTo(x+lw*0.40,ly+lh*0.46); ctx.stroke();
+
+    // 高位刹车灯
+    ctx.save();
+    if(hot){ ctx.shadowColor="rgba(255,59,48,.85)"; ctx.shadowBlur=w*0.07; }
+    ctx.fillStyle=hot?"rgba(255,72,62,.95)":"rgba(150,54,50,.28)";
+    roundRect(x-w*0.060,y-h*0.936,w*0.120,h*0.010,h*0.005); ctx.fill();
+    ctx.restore();
+
+    if(ego){
+      // 极轻的尾部铭牌，不做多余文字
+      ctx.fillStyle="rgba(48,58,68,.26)";
+      roundRect(x-w*0.040,y-h*0.365,w*0.080,h*0.010,h*0.005); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawAmbient(){
+    for(var i=0;i<sim.ambient.length;i++){
+      var a=sim.ambient[i], d=a.pos-sim.carMeters;
+      if(d<=3||d>EVIEW) continue;
+      var al=entAlpha(d); if(al<=0) continue;
+      var p=proj(d), w=p.half*0.34, h=w*0.70;
+      ctx.save(); ctx.globalAlpha=al;
+      var bodyA=a.hue?"#f3f7fa":"#fbfdfe", bodyB=a.hue?"#e3e9ef":"#edf1f4",
+          bodyC=a.hue?"#c0cad4":"#cbd3db", bodyD=a.hue?"#a6b2be":"#adb7c2";
+      drawCarModel(latX(p,a.lane),p.y,w,h,{bodyA:bodyA,bodyB:bodyB,bodyC:bodyC,bodyD:bodyD});
+      ctx.restore();
+    }
+  }
+
+  function drawEgo(){
+    var w=Math.min(W*0.215,H*0.31), h=w*0.72;
+    var hot=sim.brake || sim.over==="OVER" || sim.over==="SEVERE";
+    drawCarModel(cx,H*0.940,w,h,{ego:true,brake:hot});
+  }
+
+  function drawHaze(){
+    var g=ctx.createLinearGradient(0,horizonY-H*0.05,0,horizonY+H*0.18);
+    g.addColorStop(0,"rgba(238,243,247,.92)");
+    g.addColorStop(0.42,"rgba(238,243,247,.30)");
+    g.addColorStop(1,"rgba(238,243,247,0)");
+    ctx.fillStyle=g; ctx.fillRect(0,horizonY-H*0.05,W,H*0.24);
+  }
+
+  function renderRoad(){
+    if(W<=0) return;
+    ctx.clearRect(0,0,W,H);
+    drawSky();
+    drawRoad();
+    var list=S.entities.slice().sort(function(a,b){ return b.pos-a.pos; });
+    for(var j=0;j<list.length;j++){
+      var e=list[j];
+      if(e.type==="sign") drawSign(e);
+      else if(e.type==="gantry") drawGantry(e);
+      else if(e.type==="intersection") drawIntersection(e);
+    }
+    drawAmbient();
+    drawHaze();
+    drawEgo();
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     主循环：单一 rAF 驱动仿真 + 两侧渲染
+     ════════════════════════════════════════════════════════════ */
+  var last=performance.now();
+  function loop(now){
+    var rawDt=(now-last)/1000; last=now;
+    var dt=Math.min(0.05,rawDt);
+    advance(dt, rawDt);
+    derive();
+    renderPhone();
+    renderHUD();
+    renderRoad();
+    requestAnimationFrame(loop);
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     控件：只有 播放/暂停 与 重播
+     ════════════════════════════════════════════════════════════ */
+  var playBtn=$("playBtn"), playLabel=$("playLabel"), playIcon=$("playIcon"), replayBtn=$("replayBtn");
+  var ICON_PAUSE='<rect x="6" y="5" width="4" height="14" rx="1.2"/><rect x="14" y="5" width="4" height="14" rx="1.2"/>';
+  var ICON_PLAY='<path d="M8 5.5v13l11-6.5z"/>';
+  function syncPlay(){
+    playLabel.textContent = sim.running ? "暂停" : "开始";
+    playIcon.innerHTML = sim.running ? ICON_PAUSE : ICON_PLAY;
+    playBtn.setAttribute("aria-pressed", sim.running ? "true" : "false");
+    playBtn.classList.toggle("paused", !sim.running);
+  }
+  function togglePlay(){ sim.running = !sim.running; syncPlay(); }
+  playBtn.addEventListener("click", togglePlay);
+  replayBtn.addEventListener("click", function(){
+    replay();
+    sim.running = true; syncPlay();
+    replayBtn.classList.add("spin");
+    setTimeout(function(){ replayBtn.classList.remove("spin"); }, 520);
+  });
+  window.addEventListener("keydown", function(e){
+    if(e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
+    if(e.code === "Space"){ e.preventDefault(); togglePlay(); }
+    else if(e.key === "r" || e.key === "R"){ e.preventDefault(); replayBtn.click(); }
+  });
+
+  /* ── 启动 ── */
+  resize();
+  syncPlay();
+  spawnAmbient();
+  derive(); renderPhone(); renderHUD(); renderRoad();
+  requestAnimationFrame(loop);
+
+  // 交付自检钩子：seek 可确定性跳转到任意世界时刻
+  window.__velora = {
+    sim:sim, script:S, TIME_SCALE:TIME_SCALE,
+    STAGE1_TIME_SCALE:STAGE1_TIME_SCALE, LIGHT_REAL_OFFSET:LIGHT_REAL_OFFSET,
+    speedAt:speedAt, distAt:distAt, timeAtDist:timeAtDist,
+    classify:classify, resolveLight:resolveLight, lightPhaseAt:lightPhaseAt, stageForMeters:stageForMeters,
+    derive:derive, advance:advance, renderPhone:renderPhone, renderHUD:renderHUD, renderRoad:renderRoad,
+    replay:replay, togglePlay:togglePlay,
+    seek:function(t){
+      sim.t = Math.max(0, Math.min(S.loopT-1e-6, t));
+      sim.carMeters = distAt(sim.t); sim.speed = speedAt(sim.t); sim.introFade = 1;
+      sim.stage = stageForMeters(sim.carMeters);
+      sim.lightReal = LIGHT_REAL_OFFSET + Math.max(0, (sim.t - S.stage1T) / STAGE1_TIME_SCALE);
+      spawnAmbient(); derive(); renderPhone(); renderHUD(); renderRoad();
+      return { t:sim.t, car:sim.carMeters, speed:sim.speed, stage:sim.stage, over:sim.over,
+               lightVisible:sim.lightVisible, lightState:sim.lightState, lightSeconds:sim.lightSeconds, lightReal:sim.lightReal,
+               camVisible:sim.camVisible, camDist:sim.camDist, avgVisible:sim.avgVisible, avg:sim.avg };
+    },
+    sync:function(){ derive(); renderPhone(); renderHUD(); renderRoad(); }
+  };
+})();
+</script>
+</body>
+</html>

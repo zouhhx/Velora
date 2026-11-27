@@ -1,0 +1,151 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+    id 'org.jetbrains.kotlin.plugin.compose'
+    id 'org.jetbrains.kotlin.plugin.serialization'
+}
+
+// The Android map AK is bound to package name + signing SHA1 at Baidu's console.
+// Keep it out of source control: local.properties is gitignored.
+def baiduMapAk = ''
+def mimoApiKey = ''
+def horizonAk = ''
+def horizonSk = ''
+def localProps = rootProject.file('local.properties')
+if (localProps.exists()) {
+    def props = new Properties()
+    localProps.withInputStream { props.load(it) }
+    baiduMapAk = props.getProperty('baidu.map.ak', '')
+    mimoApiKey = props.getProperty('mimo.api.key', '')
+    horizonAk = props.getProperty('horizon.ak', '')
+    horizonSk = props.getProperty('horizon.sk', '')
+}
+
+android {
+    namespace 'com.zouhu.speedlimit'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId "com.zouhu.speedlimit"
+        minSdk 26
+        targetSdk 34
+        versionCode 36
+        versionName "2.9.4"
+        multiDexEnabled true
+        // Compose UI tests for the 320 ms navigation start window (VA-F01/F02).
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        manifestPlaceholders = [baiduMapAk: baiduMapAk]
+        buildConfigField "boolean", "BAIDU_MAP_ENABLED", baiduMapAk ? "true" : "false"
+        // Build-time fallbacks for an open-source checkout. Users can override the
+        // two AKs and the MiMo key from Settings; these values are only used when
+        // no local override is stored. Never commit local.properties.
+        buildConfigField "String", "BAIDU_MAP_AK", "\"${baiduMapAk}\""
+        // Direct MiMo TTS: user has no gateway; key is injected from gitignored
+        // local.properties for this personal build. Never distribute this APK.
+        buildConfigField "String", "MIMO_API_KEY", "\"${mimoApiKey}\""
+        // Server AK for Horizon/HTTP cruise/lamp. Advanced services need a
+        // separate Baidu ticket; this is distinct from the Android map AK.
+        buildConfigField "String", "HORIZON_AK", "\"${horizonAk}\""
+        // Optional: current Baidu endpoints authenticate with AK only. Kept as a
+        // build-time fallback for users who need an SK signing flow later.
+        buildConfigField "String", "HORIZON_SK", "\"${horizonSk}\""
+
+        ndk {
+            // Baidu ships ~19 MB of native map libs per ABI; ship arm64 only.
+            abiFilters 'arm64-v8a'
+        }
+    }
+
+    buildTypes {
+        debug {
+            debuggable true
+            manifestPlaceholders = [gatewayCleartext: "true"]
+        }
+        release {
+            manifestPlaceholders = [gatewayCleartext: "false"]
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
+    buildFeatures {
+        compose true
+        buildConfig true
+    }
+
+    useLibrary 'org.apache.http.legacy'
+
+    lint {
+        abortOnError false
+        // Compose runtime lint is incompatible with Kotlin 2.2 metadata in this toolchain.
+        disable "StateFlowValueCalledInComposition"
+        disable "CoroutineCreationDuringComposition"
+    }
+
+    testOptions {
+        // android.util.Log calls in providers must be harmless in JVM live tests.
+        unitTests.returnDefaultValues = true
+    }
+}
+
+dependencies {
+    def composeBom = platform('androidx.compose:compose-bom:2024.06.00')
+    implementation composeBom
+    implementation 'androidx.compose.ui:ui'
+    implementation 'androidx.compose.ui:ui-tooling-preview'
+    implementation 'androidx.compose.foundation:foundation'
+    implementation 'androidx.compose.material3:material3'
+    debugImplementation 'androidx.compose.ui:ui-tooling'
+
+    implementation 'androidx.core:core-ktx:1.13.1'
+    // Compose UI tests call Trace.forceEnableAppTracing(); 1.0.0 (transitive) lacks it.
+    implementation 'androidx.tracing:tracing:1.2.0'
+    implementation 'androidx.activity:activity-compose:1.9.0'
+    implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.8.2'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.8.2'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0'
+    implementation 'androidx.datastore:datastore-preferences:1.1.1'
+    // Encrypted local storage for the two AKs / SK / MiMo key. The old
+    // no-backup DataStore remains only as a one-time migration source.
+    implementation 'androidx.security:security-crypto:1.0.0'
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+    implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3'
+    // Map-Navi ships its own map SDK 9.0.2; do not add BaiduMapSDK_Map alongside it.
+    implementation 'com.baidu.lbsyun:BaiduMapSDK_Map-Navi:9.0.2'
+    // Required by the navi guide UI: com.baidu.navisdk.module.newguide.widgets.RGBottomSheet
+    // uses rx.subjects.BehaviorSubject. carnavi's POM does not declare it and the AAR does
+    // not bundle rx/*, so without this the first "start navigation" throws
+    // NoClassDefFoundError on the guide thread, which the SDK crash handler turns into
+    // System.exit(10) with no visible stack. Confirmed on device 2026-11-15 19:22.
+    implementation 'io.reactivex:rxjava:1.3.8'
+    implementation 'com.baidu.lbsyun:BaiduMapSDK_Search:9.0.0'
+    implementation 'com.baidu.lbsyun:BNGlide4:1.0.1'
+    implementation 'com.airbnb.android:lottie:3.6.0'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.cardview:cardview:1.0.0'
+    implementation 'androidx.recyclerview:recyclerview:1.3.2'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'androidx.coordinatorlayout:coordinatorlayout:1.2.0'
+    implementation 'com.google.android.material:material:1.11.0'
+
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'com.squareup.okhttp3:mockwebserver:4.12.0'
+    testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0'
+
+    // Instrumented Compose tests (require a connected device/emulator).
+    androidTestImplementation platform('androidx.compose:compose-bom:2024.06.00')
+    androidTestImplementation 'androidx.compose.ui:ui-test-junit4'
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+    androidTestImplementation 'androidx.test:runner:1.6.2'
+    debugImplementation 'androidx.compose.ui:ui-test-manifest'
+}
